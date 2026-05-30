@@ -1,0 +1,73 @@
+# Python
+
+**pycache**/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables
+
+.env
+
+# Flask
+
+instance/
+.webassets-cache
+
+# Database
+
+*.db
+*.sqlite3
+
+# Logs
+
+*.log
+
+# VS Code
+
+.vscode/
+
+# PyCharm
+
+.idea/
+
+# macOS
+
+.DS_Store
+
+# Windows
+
+Thumbs.db
+desktop.ini
+
+# Build Files
+
+build/
+dist/
+*.egg-info/
+
+# Coverage
+
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Render
+
+.render/
+
+# Node Modules (if frontend assets exist)
+
+node_modules/
+
+# Temporary Files
+
+*.tmp
+*.bak
+*.swp
