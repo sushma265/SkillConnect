@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
@@ -41,6 +41,11 @@ def create_app():
     app.register_blueprint(announcements_bp, url_prefix="/announcements")
     app.register_blueprint(feedback_bp, url_prefix="/feedback")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+
+    # ── Root route → serve frontend ───────────────────────────────
+    @app.route("/")
+    def index():
+        return render_template("index.html")
 
     # ── Create tables ──────────────────────────────────────────────
     with app.app_context():
