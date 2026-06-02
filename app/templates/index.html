@@ -1,104 +1,266 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SkillConnect</title>
+  <title>SkillConnect — Level Up Your Skills</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
-  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
 </head>
 <body>
 
-<!-- ═══════════════════════════ NAVBAR ═══════════════════════════ -->
+<!-- ═══════════ LOADING SCREEN ═══════════ -->
+<div id="loadingScreen" class="loading-screen">
+  <div class="loading-inner">
+    <div class="thunder-loader">
+      <svg class="thunder-svg" viewBox="0 0 60 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path class="bolt-path" d="M36 4L8 44H28L24 76L52 36H32L36 4Z"
+          stroke="url(#bolt-grad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+          fill="url(#bolt-fill)" fill-opacity="0"/>
+        <defs>
+          <linearGradient id="bolt-grad" x1="8" y1="4" x2="52" y2="76" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#3b82f6"/>
+            <stop offset="100%" stop-color="#06b6d4"/>
+          </linearGradient>
+          <linearGradient id="bolt-fill" x1="8" y1="4" x2="52" y2="76" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <div class="thunder-rings">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+      </div>
+    </div>
+    <div class="loading-brand">SkillConnect</div>
+    <div class="loading-tagline">Powering your potential</div>
+    <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+  </div>
+</div>
+
+<!-- ═══════════ NAVBAR ═══════════ -->
 <nav class="navbar" id="navbar">
   <div class="nav-brand" onclick="showPage('home')">
-    <span class="brand-icon">⚡</span>
-    <span>SkillConnect</span>
+    <div class="brand-logo">
+      <svg viewBox="0 0 32 40" fill="none" class="brand-bolt">
+        <path d="M19 2L4 22H14L12 38L28 18H18L19 2Z" fill="url(#nb)" stroke="url(#ns)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs>
+          <linearGradient id="nb" x1="4" y1="2" x2="28" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#06b6d4"/>
+          </linearGradient>
+          <linearGradient id="ns" x1="4" y1="2" x2="28" y2="38" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#22d3ee"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <span class="brand-text">Skill<span class="brand-accent">Connect</span></span>
   </div>
+
   <div class="nav-links" id="navLinks">
-    <a onclick="showPage('courses')">Courses</a>
-    <a onclick="showPage('events')">Events</a>
-    <a onclick="showPage('announcements')">Announcements</a>
-    <a onclick="showPage('feedback-page')">Feedback</a>
+    <a onclick="showPage('courses')" class="nav-link">Courses</a>
+    <a onclick="showPage('events')" class="nav-link">Events</a>
+    <a onclick="showPage('announcements')" class="nav-link">Announcements</a>
+    <a onclick="showPage('feedback-page')" class="nav-link">Feedback</a>
   </div>
+
+  <!-- Theme toggle button -->
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">☀️</button>
+
   <div class="nav-auth" id="navAuth">
     <button class="btn btn-ghost" onclick="showPage('login')">Login</button>
-    <button class="btn btn-primary" onclick="showPage('signup')">Sign Up</button>
+    <button class="btn btn-primary" onclick="showPage('signup')">Get Started</button>
   </div>
+
   <div class="nav-user hidden" id="navUser">
-    <span class="user-badge" id="userBadgeRole"></span>
-    <span class="user-name" id="userBadgeName"></span>
+    <div class="user-pill">
+      <span class="user-avatar" id="userAvatar">S</span>
+      <span class="user-name" id="userBadgeName"></span>
+      <span class="user-role" id="userBadgeRole"></span>
+    </div>
     <div class="dropdown">
-      <button class="btn btn-ghost" onclick="toggleDropdown()">▾ Menu</button>
+      <button class="btn btn-ghost icon-btn" onclick="toggleDropdown()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 10.5L3 5.5H13L8 10.5Z"/></svg>
+      </button>
       <div class="dropdown-menu" id="dropdownMenu">
-        <a onclick="showPage('my-registrations')">My Registrations</a>
-        <a onclick="showPage('payment-history')">Payment History</a>
-        <a onclick="showPage('submit-feedback')">Give Feedback</a>
+        <div class="dropdown-header">
+          <span id="dropdownUserName"></span>
+          <span id="dropdownUserEmail" class="dropdown-email"></span>
+        </div>
+        <div class="dropdown-divider"></div>
+        <a onclick="showPage('my-registrations')" class="dropdown-item"><span class="di-icon">📋</span> My Registrations</a>
+        <a onclick="showPage('payment-history')" class="dropdown-item"><span class="di-icon">💳</span> Payment History</a>
+        <a onclick="showPage('submit-feedback')" class="dropdown-item"><span class="di-icon">⭐</span> Give Feedback</a>
         <div id="conductorLinks" class="hidden">
-          <hr>
-          <a onclick="showPage('create-course')">+ Create Course</a>
-          <a onclick="showPage('create-event')">+ Create Event</a>
-          <a onclick="showPage('create-announcement')">+ Announcement</a>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-section-label">Conductor Tools</div>
+          <a onclick="showPage('create-course')" class="dropdown-item"><span class="di-icon">📚</span> Create Course</a>
+          <a onclick="showPage('create-event')" class="dropdown-item"><span class="di-icon">🎯</span> Create Event</a>
+          <a onclick="showPage('create-announcement')" class="dropdown-item"><span class="di-icon">📢</span> Post Announcement</a>
         </div>
         <div id="adminLinks" class="hidden">
-          <hr>
-          <a onclick="showPage('admin-dashboard')">Admin Dashboard</a>
+          <div class="dropdown-divider"></div>
+          <a onclick="showPage('admin-dashboard')" class="dropdown-item"><span class="di-icon">⚙️</span> Admin Dashboard</a>
         </div>
-        <hr>
-        <a onclick="logout()" class="text-danger">Logout</a>
+        <div class="dropdown-divider"></div>
+        <a onclick="logout()" class="dropdown-item danger"><span class="di-icon">🚪</span> Logout</a>
       </div>
     </div>
   </div>
+
+  <button class="mobile-menu-btn" onclick="toggleMobileMenu()" id="mobileMenuBtn">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
 
-<!-- ═══════════════════════════ TOAST ════════════════════════════ -->
+<!-- ═══════════ MOBILE MENU ═══════════ -->
+<div class="mobile-menu" id="mobileMenu">
+  <a onclick="showPage('courses');closeMobileMenu()">Courses</a>
+  <a onclick="showPage('events');closeMobileMenu()">Events</a>
+  <a onclick="showPage('announcements');closeMobileMenu()">Announcements</a>
+  <a onclick="showPage('feedback-page');closeMobileMenu()">Feedback</a>
+  <div class="mobile-menu-auth" id="mobileMenuAuth">
+    <button class="btn btn-outline btn-full" onclick="showPage('login');closeMobileMenu()">Login</button>
+    <button class="btn btn-primary btn-full" onclick="showPage('signup');closeMobileMenu()">Get Started</button>
+  </div>
+</div>
+
+<!-- ═══════════ TOAST ═══════════ -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- ═══════════════════════════ PAGES ════════════════════════════ -->
+<!-- ═══════════ PAGES ═══════════ -->
 <main class="main-content">
 
   <!-- ── HOME ── -->
   <div id="page-home" class="page active">
     <section class="hero">
-      <div class="hero-tag">College Project Platform</div>
-      <h1 class="hero-title">Level Up Your<br><span class="accent">Skills</span> Today</h1>
-      <p class="hero-subtitle">Browse courses, attend workshops, and grow with SkillConnect — your campus hub for skill development.</p>
-      <div class="hero-cta">
-        <button class="btn btn-primary btn-lg" onclick="showPage('courses')">Explore Courses</button>
-        <button class="btn btn-outline btn-lg" onclick="showPage('events')">View Events</button>
+      <div class="hero-bg-effects">
+        <div class="hero-orb hero-orb-1"></div>
+        <div class="hero-orb hero-orb-2"></div>
+        <div class="hero-orb hero-orb-3"></div>
+        <div class="hero-grid"></div>
       </div>
-      <div class="hero-stats" id="heroStats">
-        <div class="stat"><span class="stat-num" id="statCourses">–</span><span>Courses</span></div>
-        <div class="stat"><span class="stat-num" id="statEvents">–</span><span>Events</span></div>
-        <div class="stat"><span class="stat-num" id="statAnnouncements">–</span><span>Announcements</span></div>
+      <div class="hero-content">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 32 40" fill="url(#hb)">
+            <path d="M19 2L4 22H14L12 38L28 18H18L19 2Z"/>
+            <defs>
+              <linearGradient id="hb" x1="4" y1="2" x2="28" y2="38">
+                <stop stop-color="#3b82f6"/><stop offset="1" stop-color="#06b6d4"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          Campus Skill Development Platform
+        </div>
+        <h1 class="hero-title">
+          <span class="hero-title-top">Transform Your</span>
+          <span class="hero-title-gradient">Skills &amp; Career</span>
+          <span class="hero-title-bottom">With SkillConnect</span>
+        </h1>
+        <p class="hero-sub">Your campus hub for expert-led courses, live workshops, and vibrant skill communities. Join thousands of students leveling up.</p>
+        <div class="hero-cta">
+          <button class="btn-hero-primary" onclick="showPage('courses')">
+            <span>Explore Courses</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8H13M9 4L13 8L9 12" stroke-linecap="round"/></svg>
+          </button>
+          <button class="btn-hero-ghost" onclick="showPage('events')">View Events</button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item"><span class="stat-val" id="statCourses">–</span><span class="stat-label">Courses</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat-item"><span class="stat-val" id="statEvents">–</span><span class="stat-label">Events</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat-item"><span class="stat-val" id="statAnnouncements">–</span><span class="stat-label">Announcements</span></div>
+          <div class="stat-divider"></div>
+          <div class="stat-item"><span class="stat-val">500+</span><span class="stat-label">Students</span></div>
+        </div>
+      </div>
+      <div class="float-badge fb-1"><span class="fb-icon">🏆</span><span>Top Rated</span></div>
+      <div class="float-badge fb-2"><span class="fb-icon">⚡</span><span>Live Sessions</span></div>
+      <div class="float-badge fb-3"><span class="fb-icon">🎓</span><span>Certified</span></div>
+    </section>
+
+    <section class="pillars-section">
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background:rgba(99,102,241,0.12);border-color:rgba(99,102,241,0.2)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <h3>Expert Courses</h3>
+        <p>Structured learning paths taught by industry professionals and faculty.</p>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background:rgba(59,130,246,0.12);border-color:rgba(59,130,246,0.2)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <h3>Live Workshops</h3>
+        <p>Hands-on workshops and events to practice real-world skills immediately.</p>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background:rgba(6,182,212,0.12);border-color:rgba(6,182,212,0.2)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>Community</h3>
+        <p>Connect with peers, share feedback, and grow together as a campus.</p>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-icon" style="background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.2)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <h3>Track Progress</h3>
+        <p>Monitor your registrations, payments, and skill milestones in one place.</p>
       </div>
     </section>
 
     <section class="section">
       <div class="section-header">
-        <h2>Featured Courses</h2>
-        <a onclick="showPage('courses')" class="see-all">See all →</a>
+        <div><div class="section-eyebrow">⚡ Featured</div><h2 class="section-title">Popular Courses</h2></div>
+        <a onclick="showPage('courses')" class="see-all-btn">See all <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8H13M9 4L13 8L9 12" stroke-linecap="round"/></svg></a>
       </div>
       <div class="card-grid" id="homeCoursesGrid"></div>
     </section>
 
     <section class="section">
       <div class="section-header">
-        <h2>Upcoming Events</h2>
-        <a onclick="showPage('events')" class="see-all">See all →</a>
+        <div><div class="section-eyebrow">🎯 Upcoming</div><h2 class="section-title">Events &amp; Workshops</h2></div>
+        <a onclick="showPage('events')" class="see-all-btn">See all <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8H13M9 4L13 8L9 12" stroke-linecap="round"/></svg></a>
       </div>
       <div class="card-grid" id="homeEventsGrid"></div>
+    </section>
+
+    <section class="cta-banner">
+      <div class="cta-banner-bg"></div>
+      <div class="cta-banner-content">
+        <div class="cta-bolt">
+          <svg viewBox="0 0 32 40" fill="none">
+            <path d="M19 2L4 22H14L12 38L28 18H18L19 2Z" fill="url(#ctab)"/>
+            <defs>
+              <linearGradient id="ctab" x1="4" y1="2" x2="28" y2="38">
+                <stop stop-color="#3b82f6"/><stop offset="1" stop-color="#06b6d4"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h2>Ready to level up?</h2>
+        <p>Join hundreds of students already growing with SkillConnect.</p>
+        <button class="btn btn-primary btn-lg" onclick="showPage('signup')">Create Free Account</button>
+      </div>
     </section>
   </div>
 
   <!-- ── COURSES ── -->
   <div id="page-courses" class="page">
     <div class="page-header">
-      <h1>All Courses</h1>
-      <input class="search-input" type="text" placeholder="Search courses…" oninput="filterCourses(this.value)" id="courseSearch">
+      <div><h1 class="page-title">All Courses</h1><p class="page-subtitle">Expand your knowledge with expert-led courses</p></div>
+      <div class="page-header-actions">
+        <div class="search-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input class="search-input" type="text" placeholder="Search courses…" oninput="filterCourses(this.value)" id="courseSearch">
+        </div>
+      </div>
     </div>
     <div class="card-grid" id="coursesGrid"></div>
   </div>
@@ -106,7 +268,7 @@
   <!-- ── EVENTS ── -->
   <div id="page-events" class="page">
     <div class="page-header">
-      <h1>Events & Workshops</h1>
+      <div><h1 class="page-title">Events &amp; Workshops</h1><p class="page-subtitle">Live experiences to sharpen your skills</p></div>
       <div class="filter-tabs">
         <button class="tab active" onclick="filterEvents('all', this)">All</button>
         <button class="tab" onclick="filterEvents('event', this)">Events</button>
@@ -118,33 +280,63 @@
 
   <!-- ── ANNOUNCEMENTS ── -->
   <div id="page-announcements" class="page">
-    <div class="page-header"><h1>Announcements</h1></div>
+    <div class="page-header"><div><h1 class="page-title">Announcements</h1><p class="page-subtitle">Latest updates from the SkillConnect team</p></div></div>
     <div class="list-container" id="announcementsList"></div>
   </div>
 
   <!-- ── FEEDBACK PAGE ── -->
   <div id="page-feedback-page" class="page">
-    <div class="page-header"><h1>Community Feedback</h1></div>
+    <div class="page-header"><div><h1 class="page-title">Community Feedback</h1><p class="page-subtitle">What students are saying</p></div></div>
     <div class="list-container" id="feedbackList"></div>
   </div>
 
   <!-- ── LOGIN ── -->
   <div id="page-login" class="page">
     <div class="auth-container">
+      <div class="auth-left">
+        <div class="auth-brand">
+          <div class="auth-bolt">
+            <svg viewBox="0 0 32 40" fill="none">
+              <path d="M19 2L4 22H14L12 38L28 18H18L19 2Z" fill="url(#ab)"/>
+              <defs>
+                <linearGradient id="ab" x1="4" y1="2" x2="28" y2="38">
+                  <stop stop-color="#3b82f6"/><stop offset="1" stop-color="#06b6d4"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span>SkillConnect</span>
+        </div>
+        <h2>Welcome back.</h2>
+        <p>Your skills are waiting. Log in to continue your journey.</p>
+        <div class="auth-features">
+          <div class="auth-feature"><span>✓</span> Access all your courses</div>
+          <div class="auth-feature"><span>✓</span> Track registrations</div>
+          <div class="auth-feature"><span>✓</span> View payment history</div>
+        </div>
+      </div>
       <div class="auth-card">
-        <div class="auth-logo">⚡</div>
-        <h2>Welcome Back</h2>
+        <h2>Sign In</h2>
         <p class="auth-sub">Login to your SkillConnect account</p>
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="loginEmail" placeholder="you@example.com">
+          <label>Email Address</label>
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="loginEmail" placeholder="you@example.com">
+          </div>
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="loginPassword" placeholder="••••••••">
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="loginPassword" placeholder="••••••••">
+          </div>
         </div>
-        <button class="btn btn-primary btn-full" onclick="login()">Login</button>
-        <p class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Sign Up</a></p>
+        <button class="btn btn-primary btn-full" onclick="login()">
+          Sign In
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8H13M9 4L13 8L9 12" stroke-linecap="round"/></svg>
+        </button>
+        <p class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Create one</a></p>
       </div>
     </div>
   </div>
@@ -152,31 +344,71 @@
   <!-- ── SIGNUP ── -->
   <div id="page-signup" class="page">
     <div class="auth-container">
+      <div class="auth-left">
+        <div class="auth-brand">
+          <div class="auth-bolt">
+            <svg viewBox="0 0 32 40" fill="none">
+              <path d="M19 2L4 22H14L12 38L28 18H18L19 2Z" fill="url(#ab2)"/>
+              <defs>
+                <linearGradient id="ab2" x1="4" y1="2" x2="28" y2="38">
+                  <stop stop-color="#3b82f6"/><stop offset="1" stop-color="#06b6d4"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <span>SkillConnect</span>
+        </div>
+        <h2>Start your journey.</h2>
+        <p>Join a thriving campus community of learners and skill builders.</p>
+        <div class="auth-features">
+          <div class="auth-feature"><span>✓</span> Free to get started</div>
+          <div class="auth-feature"><span>✓</span> Access 50+ courses</div>
+          <div class="auth-feature"><span>✓</span> Earn certificates</div>
+        </div>
+      </div>
       <div class="auth-card">
-        <div class="auth-logo">⚡</div>
         <h2>Create Account</h2>
         <p class="auth-sub">Join SkillConnect today</p>
         <div class="form-group">
           <label>Full Name</label>
-          <input type="text" id="signupName" placeholder="John Doe">
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" id="signupName" placeholder="John Doe">
+          </div>
         </div>
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="signupEmail" placeholder="you@example.com">
+          <label>Email Address</label>
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="signupEmail" placeholder="you@example.com">
+          </div>
         </div>
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="signupPassword" placeholder="••••••••">
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="signupPassword" placeholder="••••••••">
+          </div>
         </div>
         <div class="form-group">
-          <label>Role</label>
-          <select id="signupRole">
-            <option value="user">User (Student)</option>
-            <option value="conductor">Conductor (Instructor)</option>
-          </select>
+          <label>I am a…</label>
+          <div class="role-selector">
+            <label class="role-option" onclick="selectRole('user')">
+              <input type="radio" name="signupRole" value="user" id="roleUser" checked>
+              <div class="role-card"><span class="role-emoji">🎓</span><span class="role-name">Student</span><span class="role-desc">Browse &amp; enroll in courses</span></div>
+            </label>
+            <label class="role-option" onclick="selectRole('conductor')">
+              <input type="radio" name="signupRole" value="conductor" id="roleConductor">
+              <div class="role-card"><span class="role-emoji">🏫</span><span class="role-name">Instructor</span><span class="role-desc">Create and manage content</span></div>
+            </label>
+          </div>
+          <input type="hidden" id="signupRole" value="user">
         </div>
-        <button class="btn btn-primary btn-full" onclick="signup()">Create Account</button>
-        <p class="auth-switch">Already have an account? <a onclick="showPage('login')">Login</a></p>
+        <button class="btn btn-primary btn-full" onclick="signup()">
+          Create Account
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8H13M9 4L13 8L9 12" stroke-linecap="round"/></svg>
+        </button>
+        <p class="auth-switch">Already have an account? <a onclick="showPage('login')">Sign in</a></p>
       </div>
     </div>
   </div>
@@ -184,37 +416,25 @@
   <!-- ── CREATE COURSE ── -->
   <div id="page-create-course" class="page">
     <div class="form-page">
-      <h1>Create New Course</h1>
+      <div class="form-page-header">
+        <div class="form-page-icon">📚</div>
+        <div><h1>Create New Course</h1><p>Share your expertise with students</p></div>
+      </div>
       <div class="form-card">
         <div class="form-row">
-          <div class="form-group">
-            <label>Course Title *</label>
-            <input type="text" id="cTitle" placeholder="e.g. Python for Beginners">
-          </div>
-          <div class="form-group">
-            <label>Category</label>
-            <input type="text" id="cCategory" placeholder="e.g. Programming">
-          </div>
+          <div class="form-group"><label>Course Title <span class="required">*</span></label><input type="text" id="cTitle" placeholder="e.g. Python for Beginners"></div>
+          <div class="form-group"><label>Category</label><input type="text" id="cCategory" placeholder="e.g. Programming"></div>
         </div>
-        <div class="form-group">
-          <label>Description *</label>
-          <textarea id="cDesc" rows="4" placeholder="What will students learn?"></textarea>
-        </div>
+        <div class="form-group"><label>Description <span class="required">*</span></label><textarea id="cDesc" rows="4" placeholder="What will students learn? What skills will they gain?"></textarea></div>
         <div class="form-row">
-          <div class="form-group">
-            <label>Price (INR) *</label>
-            <input type="number" id="cPrice" placeholder="999">
-          </div>
-          <div class="form-group">
-            <label>Duration</label>
-            <input type="text" id="cDuration" placeholder="e.g. 4 weeks">
-          </div>
-          <div class="form-group">
-            <label>Instructor Name</label>
-            <input type="text" id="cInstructor" placeholder="Your name">
-          </div>
+          <div class="form-group"><label>Price (INR) <span class="required">*</span></label><div class="input-wrap"><span class="input-prefix">₹</span><input type="number" id="cPrice" placeholder="999" style="padding-left:2.5rem"></div></div>
+          <div class="form-group"><label>Duration</label><input type="text" id="cDuration" placeholder="e.g. 4 weeks"></div>
+          <div class="form-group"><label>Instructor Name</label><input type="text" id="cInstructor" placeholder="Your name"></div>
         </div>
-        <button class="btn btn-primary" onclick="createCourse()">Create Course</button>
+        <button class="btn btn-primary" onclick="createCourse()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Publish Course
+        </button>
       </div>
     </div>
   </div>
@@ -222,46 +442,28 @@
   <!-- ── CREATE EVENT ── -->
   <div id="page-create-event" class="page">
     <div class="form-page">
-      <h1>Create New Event</h1>
+      <div class="form-page-header">
+        <div class="form-page-icon">🎯</div>
+        <div><h1>Create New Event</h1><p>Host a workshop or event for students</p></div>
+      </div>
       <div class="form-card">
         <div class="form-row">
-          <div class="form-group">
-            <label>Event Title *</label>
-            <input type="text" id="eTitle" placeholder="e.g. AI Workshop">
-          </div>
-          <div class="form-group">
-            <label>Type</label>
-            <select id="eType">
-              <option value="event">Event</option>
-              <option value="workshop">Workshop</option>
-            </select>
-          </div>
+          <div class="form-group"><label>Event Title <span class="required">*</span></label><input type="text" id="eTitle" placeholder="e.g. AI Workshop"></div>
+          <div class="form-group"><label>Type</label><select id="eType"><option value="event">Event</option><option value="workshop">Workshop</option></select></div>
         </div>
-        <div class="form-group">
-          <label>Description *</label>
-          <textarea id="eDesc" rows="4" placeholder="What's this event about?"></textarea>
+        <div class="form-group"><label>Description <span class="required">*</span></label><textarea id="eDesc" rows="4" placeholder="What's this event about?"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Date &amp; Time <span class="required">*</span></label><input type="text" id="eDate" placeholder="2025-08-15 10:00"></div>
+          <div class="form-group"><label>Venue</label><input type="text" id="eVenue" placeholder="e.g. Seminar Hall A"></div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>Date & Time * (YYYY-MM-DD HH:MM)</label>
-            <input type="text" id="eDate" placeholder="2025-08-15 10:00">
-          </div>
-          <div class="form-group">
-            <label>Venue</label>
-            <input type="text" id="eVenue" placeholder="e.g. Seminar Hall A">
-          </div>
+          <div class="form-group"><label>Price (INR, 0 = free)</label><div class="input-wrap"><span class="input-prefix">₹</span><input type="number" id="ePrice" placeholder="0" value="0" style="padding-left:2.5rem"></div></div>
+          <div class="form-group"><label>Capacity</label><input type="number" id="eCapacity" placeholder="100" value="100"></div>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Price (INR, 0 = free)</label>
-            <input type="number" id="ePrice" placeholder="0" value="0">
-          </div>
-          <div class="form-group">
-            <label>Capacity</label>
-            <input type="number" id="eCapacity" placeholder="100" value="100">
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="createEvent()">Create Event</button>
+        <button class="btn btn-primary" onclick="createEvent()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Event
+        </button>
       </div>
     </div>
   </div>
@@ -269,17 +471,17 @@
   <!-- ── CREATE ANNOUNCEMENT ── -->
   <div id="page-create-announcement" class="page">
     <div class="form-page">
-      <h1>Post Announcement</h1>
+      <div class="form-page-header">
+        <div class="form-page-icon">📢</div>
+        <div><h1>Post Announcement</h1><p>Share updates with the community</p></div>
+      </div>
       <div class="form-card">
-        <div class="form-group">
-          <label>Title *</label>
-          <input type="text" id="annTitle" placeholder="Announcement title">
-        </div>
-        <div class="form-group">
-          <label>Content *</label>
-          <textarea id="annContent" rows="6" placeholder="Write your announcement…"></textarea>
-        </div>
-        <button class="btn btn-primary" onclick="createAnnouncement()">Post Announcement</button>
+        <div class="form-group"><label>Title <span class="required">*</span></label><input type="text" id="annTitle" placeholder="Announcement title"></div>
+        <div class="form-group"><label>Content <span class="required">*</span></label><textarea id="annContent" rows="8" placeholder="Write your announcement…"></textarea></div>
+        <button class="btn btn-primary" onclick="createAnnouncement()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Post Announcement
+        </button>
       </div>
     </div>
   </div>
@@ -287,69 +489,80 @@
   <!-- ── SUBMIT FEEDBACK ── -->
   <div id="page-submit-feedback" class="page">
     <div class="form-page">
-      <h1>Submit Feedback</h1>
+      <div class="form-page-header">
+        <div class="form-page-icon">⭐</div>
+        <div><h1>Submit Feedback</h1><p>Help us and instructors improve</p></div>
+      </div>
       <div class="form-card">
-        <div class="form-group">
-          <label>Feedback For</label>
-          <select id="fbType" onchange="loadFeedbackItems()">
-            <option value="course">Course</option>
-            <option value="event">Event</option>
-          </select>
+        <div class="form-row">
+          <div class="form-group"><label>Feedback For</label><select id="fbType" onchange="loadFeedbackItems()"><option value="course">Course</option><option value="event">Event</option></select></div>
+          <div class="form-group"><label>Select Item</label><select id="fbItem"></select></div>
         </div>
         <div class="form-group">
-          <label>Select Item</label>
-          <select id="fbItem"></select>
-        </div>
-        <div class="form-group">
-          <label>Rating</label>
+          <label>Your Rating</label>
           <div class="star-rating" id="starRating">
-            <span onclick="setRating(1)">★</span>
-            <span onclick="setRating(2)">★</span>
-            <span onclick="setRating(3)">★</span>
-            <span onclick="setRating(4)">★</span>
-            <span onclick="setRating(5)">★</span>
+            <button class="star-btn" onclick="setRating(1)" type="button">★</button>
+            <button class="star-btn" onclick="setRating(2)" type="button">★</button>
+            <button class="star-btn" onclick="setRating(3)" type="button">★</button>
+            <button class="star-btn" onclick="setRating(4)" type="button">★</button>
+            <button class="star-btn" onclick="setRating(5)" type="button">★</button>
           </div>
+          <div class="rating-label" id="ratingLabel">Click to rate</div>
           <input type="hidden" id="fbRating" value="0">
         </div>
-        <div class="form-group">
-          <label>Comment</label>
-          <textarea id="fbComment" rows="4" placeholder="Share your experience…"></textarea>
-        </div>
-        <button class="btn btn-primary" onclick="submitFeedback()">Submit Feedback</button>
+        <div class="form-group"><label>Comment</label><textarea id="fbComment" rows="5" placeholder="Share your experience in detail…"></textarea></div>
+        <button class="btn btn-primary" onclick="submitFeedback()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          Submit Feedback
+        </button>
       </div>
     </div>
   </div>
 
   <!-- ── MY REGISTRATIONS ── -->
   <div id="page-my-registrations" class="page">
-    <div class="page-header"><h1>My Registrations</h1></div>
+    <div class="page-header"><div><h1 class="page-title">My Registrations</h1><p class="page-subtitle">Events and workshops you've signed up for</p></div></div>
     <div class="list-container" id="myRegistrationsList"></div>
   </div>
 
   <!-- ── PAYMENT HISTORY ── -->
   <div id="page-payment-history" class="page">
-    <div class="page-header"><h1>Payment History</h1></div>
+    <div class="page-header"><div><h1 class="page-title">Payment History</h1><p class="page-subtitle">All your transactions on SkillConnect</p></div></div>
     <div class="list-container" id="paymentHistoryList"></div>
   </div>
 
   <!-- ── ADMIN DASHBOARD ── -->
   <div id="page-admin-dashboard" class="page">
-    <div class="page-header"><h1>Admin Dashboard</h1></div>
+    <div class="page-header"><div><h1 class="page-title">Admin Dashboard</h1><p class="page-subtitle">Platform management and analytics</p></div></div>
     <div class="admin-tabs">
-      <button class="tab active" onclick="loadAdminTab('users', this)">Users</button>
-      <button class="tab" onclick="loadAdminTab('courses', this)">Courses</button>
-      <button class="tab" onclick="loadAdminTab('events', this)">Events</button>
-      <button class="tab" onclick="loadAdminTab('payments', this)">Payments</button>
+      <button class="tab active" onclick="loadAdminTab('users', this)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users
+      </button>
+      <button class="tab" onclick="loadAdminTab('courses', this)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Courses
+      </button>
+      <button class="tab" onclick="loadAdminTab('events', this)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Events
+      </button>
+      <button class="tab" onclick="loadAdminTab('payments', this)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Payments
+      </button>
     </div>
     <div id="adminContent"></div>
   </div>
 
 </main>
 
-<!-- ═══════════════════════════ MODAL ════════════════════════════ -->
+<!-- ═══════════ MODAL ═══════════ -->
 <div class="modal-overlay hidden" id="modalOverlay" onclick="closeModal()">
   <div class="modal" onclick="event.stopPropagation()" id="modalBox">
-    <button class="modal-close" onclick="closeModal()">✕</button>
+    <button class="modal-close" onclick="closeModal()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l12 12M13 1L1 13"/></svg>
+    </button>
     <div id="modalContent"></div>
   </div>
 </div>
