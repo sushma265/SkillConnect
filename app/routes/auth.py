@@ -27,20 +27,18 @@ SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email",
 def make_flow():
     """Create a fresh OAuth flow object per request."""
     return Flow.from_client_config(
-        {GOOGLE_REDIRECT_URI  
+        {
             "web": {
-                "client_id":     GOOGLE_CLIENT_ID,
+                "client_id": GOOGLE_CLIENT_ID,
                 "client_secret": GOOGLE_CLIENT_SECRET,
-                "auth_uri":      "https://accounts.google.com/o/oauth2/auth",
-                "token_uri":     "https://oauth2.googleapis.com/token",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
                 "redirect_uris": [GOOGLE_REDIRECT_URI],
             }
         },
         scopes=SCOPES,
         redirect_uri=GOOGLE_REDIRECT_URI,
     )
-
-
 # ─── Existing Signup ───────────────────────────────────────────────────────────
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
