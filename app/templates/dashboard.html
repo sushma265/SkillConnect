@@ -1,0 +1,723 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – SkillConnect{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="/static/css/dashboard.css">{% endblock %}
+
+{% block content %}
+<section class="sc-dashboard py-4">
+    <div class="container">
+        <!-- Dashboard Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <h1 class="h3 mb-1" id="dashGreeting">Welcome back!</h1>
+                <p class="text-secondary mb-0">Here's your SkillConnect overview</p>
+            </div>
+            <div class="d-flex gap-2" id="dashActions"></div>
+        </div>
+
+        <!-- Dashboard Stats -->
+        <div class="row g-3 mb-4" id="dashStats">
+            <div class="col-lg-3 col-md-6">
+                <div class="sc-dash-stat">
+                    <div class="sc-dash-stat-icon" style="background:rgba(59,130,246,0.15)"><i class="bi bi-calendar-event" style="color:#60a5fa"></i></div>
+                    <div><span class="sc-dash-stat-val" id="statMyEvents">–</span><span class="sc-dash-stat-label">My Events</span></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="sc-dash-stat">
+                    <div class="sc-dash-stat-icon" style="background:rgba(16,185,129,0.15)"><i class="bi bi-check2-circle" style="color:#34d399"></i></div>
+                    <div><span class="sc-dash-stat-val" id="statCheckins">–</span><span class="sc-dash-stat-label">Check-ins</span></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="sc-dash-stat">
+                    <div class="sc-dash-stat-icon" style="background:rgba(99,102,241,0.15)"><i class="bi bi-people" style="color:#818cf8"></i></div>
+                    <div><span class="sc-dash-stat-val" id="statConnections">–</span><span class="sc-dash-stat-label">Connections</span></div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="sc-dash-stat">
+                    <div class="sc-dash-stat-icon" style="background:rgba(245,158,11,0.15)"><i class="bi bi-star" style="color:#fbbf24"></i></div>
+                    <div><span class="sc-dash-stat-val" id="statFeedback">–</span><span class="sc-dash-stat-label">Feedback Given</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tabs -->
+        <ul class="nav nav-pills sc-dash-tabs mb-4" role="tablist">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tabRegistrations"><i class="bi bi-ticket-perforated me-1"></i>My Registrations</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabConnections"><i class="bi bi-people me-1"></i>Connections</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabNetworking"><i class="bi bi-send me-1"></i>Networking</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabAnnouncements"><i class="bi bi-megaphone me-1"></i>Announcements</button></li>
+            <li class="nav-item d-none" id="tabMyEventsLi"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabMyEvents"><i class="bi bi-calendar-check me-1"></i>My Events &amp; Sessions</button></li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Registrations Tab -->
+            <div class="tab-pane fade show active" id="tabRegistrations">
+                <div id="registrationsList" class="row g-3">
+                    <div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>
+                </div>
+            </div>
+
+            <!-- Connections Tab -->
+            <div class="tab-pane fade" id="tabConnections">
+                <div id="connectionsList" class="row g-3">
+                    <div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>
+                </div>
+            </div>
+
+            <!-- Networking Tab -->
+            <div class="tab-pane fade" id="tabNetworking">
+                <h5 class="mb-3">Received Requests</h5>
+                <div id="networkingReceived" class="row g-3 mb-4">
+                    <div class="col-12 text-center py-3"><div class="spinner-border text-primary spinner-border-sm"></div></div>
+                </div>
+                <h5 class="mb-3">Sent Requests</h5>
+                <div id="networkingSent" class="row g-3">
+                    <div class="col-12 text-center py-3"><div class="spinner-border text-primary spinner-border-sm"></div></div>
+                </div>
+            </div>
+
+            <!-- Announcements Tab -->
+            <div class="tab-pane fade" id="tabAnnouncements">
+                <div id="dashAnnouncements">
+                    <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+                </div>
+            </div>
+
+            <!-- My Events & Sessions Tab (organizer/admin only) -->
+            <div class="tab-pane fade" id="tabMyEvents">
+                <div id="myEventsList">
+                    <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════ CREATE SESSION MODAL ═══════════ -->
+<div class="modal fade" id="createSessionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content sc-modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h4 class="modal-title"><i class="bi bi-collection-play me-2" style="color:#22d3ee"></i>Add Session</h4>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createSessionForm" onsubmit="return handleCreateSession(event)">
+                    <input type="hidden" id="sessEventId">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Session Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control sc-input" id="sessTitle" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control sc-input" id="sessDesc" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Session Type</label>
+                            <select class="form-select sc-input" id="sessType">
+                                <option value="keynote">Keynote</option>
+                                <option value="panel">Panel</option>
+                                <option value="workshop">Workshop</option>
+                                <option value="networking">Networking</option>
+                                <option value="break">Break</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Speaker Name</label>
+                            <input type="text" class="form-control sc-input" id="sessSpeaker">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Room / Location</label>
+                            <input type="text" class="form-control sc-input" id="sessRoom">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Speaker Bio</label>
+                            <input type="text" class="form-control sc-input" id="sessSpeakerBio">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Start Time <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control sc-input" id="sessStart" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">End Time <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control sc-input" id="sessEnd" required>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color:var(--sc-border)!important">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary sc-btn-primary" id="createSessBtn"><i class="bi bi-plus-circle me-1"></i>Add Session</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ CREATE POLL MODAL ═══════════ -->
+<div class="modal fade" id="createPollModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content sc-modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h4 class="modal-title"><i class="bi bi-bar-chart me-2" style="color:#fbbf24"></i>Create Poll</h4>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createPollForm" onsubmit="return handleCreatePoll(event)">
+                    <input type="hidden" id="pollSessionId">
+                    <div class="mb-3">
+                        <label class="form-label">Question <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control sc-input" id="pollQuestion" required placeholder="e.g. How would you rate this session?">
+                    </div>
+                    <div class="mb-3" id="pollOptionsContainer">
+                        <label class="form-label">Options <span class="text-danger">*</span> <small class="text-secondary">(min 2)</small></label>
+                        <div class="d-flex gap-2 mb-2"><input type="text" class="form-control sc-input poll-opt-input" placeholder="Option 1" required><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="bi bi-x"></i></button></div>
+                        <div class="d-flex gap-2 mb-2"><input type="text" class="form-control sc-input poll-opt-input" placeholder="Option 2" required><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="bi bi-x"></i></button></div>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" onclick="addPollOption()"><i class="bi bi-plus me-1"></i>Add Option</button>
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top" style="border-color:var(--sc-border)!important">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary sc-btn-primary" id="createPollBtn"><i class="bi bi-plus-circle me-1"></i>Create Poll</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ CREATE EVENT MODAL ═══════════ -->
+<div class="modal fade" id="createEventModal" tabindex="-1" aria-labelledby="createEventModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content sc-modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h4 class="modal-title" id="createEventModalLabel">
+                    <i class="bi bi-calendar-plus me-2" style="color:#60a5fa"></i>Create New Event
+                </h4>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createEventForm" onsubmit="return handleCreateEvent(event)">
+                    <div class="row g-3">
+                        <!-- Title -->
+                        <div class="col-12">
+                            <label class="form-label" for="evTitle">Event Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control sc-input" id="evTitle" placeholder="e.g. Tech Summit 2025" required maxlength="200">
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-12">
+                            <label class="form-label" for="evDescription">Description <span class="text-danger">*</span></label>
+                            <textarea class="form-control sc-input" id="evDescription" rows="3" placeholder="Describe your event, what attendees can expect..." required></textarea>
+                        </div>
+
+                        <!-- Event Type -->
+                        <div class="col-md-6">
+                            <label class="form-label">Event Type</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="evType" id="evTypeEvent" value="event" checked>
+                                    <label class="btn btn-outline-primary w-100 sc-role-btn" for="evTypeEvent">
+                                        <i class="bi bi-calendar-event d-block mb-1" style="font-size:1.2rem"></i>
+                                        <span class="d-block fw-600 small">Event</span>
+                                    </label>
+                                </div>
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="evType" id="evTypeWorkshop" value="workshop">
+                                    <label class="btn btn-outline-primary w-100 sc-role-btn" for="evTypeWorkshop">
+                                        <i class="bi bi-tools d-block mb-1" style="font-size:1.2rem"></i>
+                                        <span class="d-block fw-600 small">Workshop</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Venue -->
+                        <div class="col-md-6">
+                            <label class="form-label" for="evVenue">Venue</label>
+                            <input type="text" class="form-control sc-input" id="evVenue" placeholder="e.g. Convention Center, Hall A">
+                        </div>
+
+                        <!-- Date & Time -->
+                        <div class="col-md-6">
+                            <label class="form-label" for="evDate">Start Date & Time <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control sc-input" id="evDate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="evEndDate">End Date & Time</label>
+                            <input type="datetime-local" class="form-control sc-input" id="evEndDate">
+                        </div>
+
+                        <!-- Price & Capacity -->
+                        <div class="col-md-6">
+                            <label class="form-label" for="evPrice">Price (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text sc-input-icon">₹</span>
+                                <input type="number" class="form-control sc-input" id="evPrice" min="0" step="0.01" value="0" placeholder="0 = Free">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="evCapacity">Capacity</label>
+                            <div class="input-group">
+                                <span class="input-group-text sc-input-icon"><i class="bi bi-people"></i></span>
+                                <input type="number" class="form-control sc-input" id="evCapacity" min="1" value="100" placeholder="Max attendees">
+                            </div>
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="col-12">
+                            <label class="form-label" for="evTags">Tags <small class="text-secondary">(comma separated)</small></label>
+                            <input type="text" class="form-control sc-input" id="evTags" placeholder="e.g. tech, networking, AI, startups">
+                        </div>
+
+                        <!-- Virtual Event Toggle -->
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="evIsVirtual" onchange="toggleMeetingLink()">
+                                <label class="form-check-label" for="evIsVirtual">
+                                    <i class="bi bi-camera-video me-1"></i>This is a virtual / online event
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Meeting Link (shown when virtual is checked) -->
+                        <div class="col-12 d-none" id="meetingLinkGroup">
+                            <label class="form-label" for="evMeetingLink">Meeting Link</label>
+                            <div class="input-group">
+                                <span class="input-group-text sc-input-icon"><i class="bi bi-link-45deg"></i></span>
+                                <input type="url" class="form-control sc-input" id="evMeetingLink" placeholder="https://meet.google.com/... or Zoom link">
+                            </div>
+                        </div>
+
+                        <!-- Banner URL -->
+                        <div class="col-12">
+                            <label class="form-label" for="evBanner">Banner Image URL <small class="text-secondary">(optional)</small></label>
+                            <div class="input-group">
+                                <span class="input-group-text sc-input-icon"><i class="bi bi-image"></i></span>
+                                <input type="url" class="form-control sc-input" id="evBanner" placeholder="https://example.com/banner.jpg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color:var(--sc-border) !important">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary sc-btn-primary" id="createEventBtn">
+                            <i class="bi bi-plus-circle me-1"></i>Create Event
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Page Init ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const user = JSON.parse(localStorage.getItem('sc_user') || '{}');
+    if (!user.id) { window.location.href = '/login'; return; }
+
+    document.getElementById('dashGreeting').textContent = `Welcome back, ${user.name}!`;
+
+    if (user.role === 'organizer' || user.role === 'admin') {
+        document.getElementById('dashActions').innerHTML = `
+            <a href="/analytics-view" class="btn btn-outline-primary btn-sm"><i class="bi bi-bar-chart me-1"></i>Analytics</a>
+            <button class="btn btn-primary btn-sm sc-btn-primary" onclick="showCreateEvent()"><i class="bi bi-plus me-1"></i>Create Event</button>
+        `;
+        document.getElementById('tabMyEventsLi').classList.remove('d-none');
+        loadMyEvents();
+    }
+
+    loadDashData();
+
+    // Auto-open create event modal if redirected with ?action=create-event
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'create-event' && (user.role === 'organizer' || user.role === 'admin')) {
+        setTimeout(() => showCreateEvent(), 300);
+        window.history.replaceState({}, document.title, '/dashboard');
+    }
+});
+
+// ── Show Create Event Modal ────────────────────────────────────────────
+function showCreateEvent() {
+    const modal = document.getElementById('createEventModal');
+    if (!modal) return;
+    // Reset form
+    document.getElementById('createEventForm').reset();
+    document.getElementById('meetingLinkGroup').classList.add('d-none');
+    // Open modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+// ── Toggle Meeting Link Field ──────────────────────────────────────────
+function toggleMeetingLink() {
+    const isVirtual = document.getElementById('evIsVirtual').checked;
+    const group = document.getElementById('meetingLinkGroup');
+    if (isVirtual) {
+        group.classList.remove('d-none');
+    } else {
+        group.classList.add('d-none');
+    }
+}
+
+// ── Handle Create Event Form Submit ────────────────────────────────────
+async function handleCreateEvent(e) {
+    e.preventDefault();
+
+    const btn = document.getElementById('createEventBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+
+    const token = localStorage.getItem('sc_token');
+    if (!token) { window.location.href = '/login'; return false; }
+
+    // Parse the datetime-local values into "YYYY-MM-DD HH:MM" format
+    const startRaw = document.getElementById('evDate').value;      // "2025-12-15T14:30"
+    const endRaw = document.getElementById('evEndDate').value;
+
+    if (!startRaw) {
+        showToast('Start date & time is required', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Create Event';
+        return false;
+    }
+
+    // Convert "2025-12-15T14:30" → "2025-12-15 14:30"
+    const eventDate = startRaw.replace('T', ' ');
+    const endDate = endRaw ? endRaw.replace('T', ' ') : null;
+
+    // Parse tags
+    const tagsRaw = document.getElementById('evTags').value.trim();
+    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+    const payload = {
+        title: document.getElementById('evTitle').value.trim(),
+        description: document.getElementById('evDescription').value.trim(),
+        event_type: document.querySelector('input[name="evType"]:checked').value,
+        venue: document.getElementById('evVenue').value.trim() || null,
+        event_date: eventDate,
+        end_date: endDate,
+        price: parseFloat(document.getElementById('evPrice').value) || 0,
+        capacity: parseInt(document.getElementById('evCapacity').value) || 100,
+        tags: tags,
+        is_virtual: document.getElementById('evIsVirtual').checked,
+        meeting_link: document.getElementById('evMeetingLink').value.trim() || null,
+        banner_url: document.getElementById('evBanner').value.trim() || null,
+    };
+
+    try {
+        const res = await fetch('/events', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showToast('Event created successfully!', 'success');
+            // Close modal
+            const modalEl = document.getElementById('createEventModal');
+            const bsModal = bootstrap.Modal.getInstance(modalEl);
+            if (bsModal) bsModal.hide();
+            // Redirect to the new event detail page
+            if (data.event && data.event.id) {
+                setTimeout(() => window.location.href = `/event/${data.event.id}`, 800);
+            }
+        } else {
+            showToast(data.error || 'Failed to create event', 'danger');
+        }
+    } catch (err) {
+        console.error('Create event error:', err);
+        showToast('Network error. Please try again.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Create Event';
+    }
+
+    return false;
+}
+
+// ── Load Dashboard Data ────────────────────────────────────────────────
+async function loadDashData() {
+    const token = localStorage.getItem('sc_token');
+    const headers = {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'};
+
+    // Load registrations
+    try {
+        const res = await fetch('/events/my-registrations', {headers});
+        const data = await res.json();
+        const regs = data.registrations || [];
+        document.getElementById('statMyEvents').textContent = regs.length;
+        document.getElementById('statCheckins').textContent = regs.filter(r => r.checked_in).length;
+
+        const list = document.getElementById('registrationsList');
+        if (!regs.length) {
+            list.innerHTML = '<div class="col-12"><div class="sc-empty-state"><i class="bi bi-ticket-perforated"></i><p>No registrations yet. <a href="/browse-events">Browse events</a></p></div></div>';
+        } else {
+            list.innerHTML = regs.map(r => `
+                <div class="col-lg-6">
+                    <div class="sc-reg-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${r.event_title || 'Event'}</h6>
+                                <small class="text-secondary">Registered: ${new Date(r.registered_at).toLocaleDateString()}</small>
+                            </div>
+                            <span class="badge ${r.checked_in ? 'bg-success' : r.status === 'confirmed' ? 'bg-primary' : 'bg-warning'}">${r.checked_in ? 'Checked In' : r.status}</span>
+                        </div>
+                        <div class="mt-2 d-flex gap-2">
+                            <a href="/event/${r.event_id}" class="btn btn-outline-primary btn-sm">View Event</a>
+                            ${r.qr_token ? '<button class="btn btn-outline-success btn-sm" onclick="showQR(\''+r.id+'\')"><i class="bi bi-qr-code me-1"></i>QR Code</button>' : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch(e) { document.getElementById('registrationsList').innerHTML = '<div class="col-12"><p class="text-danger">Failed to load registrations.</p></div>'; }
+
+    // Load connections
+    try {
+        const res = await fetch('/network/connections', {headers});
+        const data = await res.json();
+        document.getElementById('statConnections').textContent = data.total_connections || 0;
+
+        const list = document.getElementById('connectionsList');
+        const conns = data.connections || [];
+        if (!conns.length) {
+            list.innerHTML = '<div class="col-12"><div class="sc-empty-state"><i class="bi bi-people"></i><p>No connections yet. Network at events!</p></div></div>';
+        } else {
+            list.innerHTML = conns.map(c => `
+                <div class="col-lg-4 col-md-6">
+                    <div class="sc-connection-card">
+                        <div class="sc-avatar-lg">${(c.connection.name || 'U')[0].toUpperCase()}</div>
+                        <h6 class="mb-0">${c.connection.name}</h6>
+                        <small class="text-secondary">${c.connection.job_title || ''} ${c.connection.company ? '@ ' + c.connection.company : ''}</small>
+                        <small class="text-secondary d-block mt-1">Connected ${c.connected_at ? new Date(c.connected_at).toLocaleDateString() : ''}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch(e) { document.getElementById('connectionsList').innerHTML = '<div class="col-12"><p class="text-danger">Failed to load connections.</p></div>'; }
+
+    // Load networking requests
+    try {
+        const [recvRes, sentRes] = await Promise.all([
+            fetch('/network/my-requests', {headers}),
+            fetch('/network/sent-requests', {headers}),
+        ]);
+        const recvData = await recvRes.json();
+        const sentData = await sentRes.json();
+
+        const received = recvData.requests || [];
+        const sent = sentData.sent_requests || [];
+
+        document.getElementById('networkingReceived').innerHTML = !received.length ?
+            '<div class="col-12"><p class="text-secondary">No pending requests.</p></div>' :
+            received.map(r => `
+                <div class="col-lg-6">
+                    <div class="sc-req-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div><strong>${r.sender_name}</strong> <small class="text-secondary ms-1">${r.sender_company || ''}</small></div>
+                            <span class="badge ${r.status === 'pending' ? 'bg-warning' : r.status === 'accepted' ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+                        </div>
+                        ${r.message ? '<p class="small text-secondary mt-1 mb-2">"' + r.message + '"</p>' : ''}
+                        ${r.status === 'pending' ? '<div class="d-flex gap-2"><button class="btn btn-success btn-sm" onclick="respondReq(\''+r.id+'\',\'accept\')"><i class="bi bi-check me-1"></i>Accept</button><button class="btn btn-outline-danger btn-sm" onclick="respondReq(\''+r.id+'\',\'reject\')">Decline</button></div>' : ''}
+                    </div>
+                </div>
+            `).join('');
+
+        document.getElementById('networkingSent').innerHTML = !sent.length ?
+            '<div class="col-12"><p class="text-secondary">No sent requests.</p></div>' :
+            sent.map(r => `
+                <div class="col-lg-6">
+                    <div class="sc-req-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>To: <strong>${r.receiver_name}</strong></div>
+                            <span class="badge ${r.status === 'pending' ? 'bg-warning' : r.status === 'accepted' ? 'bg-success' : 'bg-danger'}">${r.status}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+    } catch(e) { /* non-critical */ }
+
+    // Load announcements
+    try {
+        const res = await fetch('/announcements');
+        const data = await res.json();
+        const anns = data.announcements || [];
+        document.getElementById('dashAnnouncements').innerHTML = !anns.length ?
+            '<div class="sc-empty-state"><i class="bi bi-megaphone"></i><p>No announcements.</p></div>' :
+            anns.slice(0, 5).map(a => `
+                <div class="sc-announcement-card mb-3">
+                    <span class="sc-priority-badge sc-priority-${a.priority}">${a.priority}</span>
+                    <h6 class="mt-2 mb-1">${a.title}</h6>
+                    <p class="text-secondary small mb-0">${(a.content || '').substring(0, 200)}</p>
+                    <small class="text-secondary">${new Date(a.created_at).toLocaleDateString()}</small>
+                </div>
+            `).join('');
+    } catch(e) { /* non-critical */ }
+
+    // Feedback count
+    document.getElementById('statFeedback').textContent = '–';
+}
+
+// ── Respond to Networking Request ──────────────────────────────────────
+async function respondReq(reqId, action) {
+    const token = localStorage.getItem('sc_token');
+    try {
+        const res = await fetch(`/network/request/${reqId}`, {
+            method: 'PUT',
+            headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
+            body: JSON.stringify({action}),
+        });
+        const data = await res.json();
+        showToast(data.message || `Request ${action}ed`, res.ok ? 'success' : 'danger');
+        if (res.ok) loadDashData();
+    } catch(e) { showToast('Failed to respond', 'danger'); }
+}
+
+// ── Show QR Code Modal ─────────────────────────────────────────────────
+function showQR(regId) {
+    const token = localStorage.getItem('sc_token');
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content sc-modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">QR Check-In Code</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="/analytics/qr/${regId}" alt="QR Code" class="img-fluid" style="max-width:300px" onerror="this.parentElement.innerHTML='<p class=text-secondary>QR image unavailable. Use token for check-in.</p>'">
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    modal.addEventListener('hidden.bs.modal', () => modal.remove());
+}
+
+// ── Load My Events (Organizer) ─────────────────────────────────────────
+async function loadMyEvents() {
+    const token = localStorage.getItem('sc_token');
+    const headers = {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'};
+    try {
+        const res = await fetch('/events', {headers});
+        const data = await res.json();
+        const user = JSON.parse(localStorage.getItem('sc_user') || '{}');
+        const myEvents = (data.events || []).filter(e => e.created_by === user.id);
+        const container = document.getElementById('myEventsList');
+        if (!myEvents.length) {
+            container.innerHTML = '<div class="sc-empty-state"><i class="bi bi-calendar-plus"></i><p>No events created yet. <a href="#" onclick="showCreateEvent()">Create one</a></p></div>';
+            return;
+        }
+        let html = '';
+        for (const ev of myEvents) {
+            const sessRes = await fetch(`/sessions?event_id=${ev.id}`, {headers});
+            const sessData = await sessRes.json();
+            const sessions = sessData.sessions || [];
+            html += `<div class="sc-sidebar-card mb-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div><h5 class="mb-1">${ev.title}</h5><small class="text-secondary">${new Date(ev.event_date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${ev.registered_count||0}/${ev.capacity} registered</small></div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="openCreateSession('${ev.id}')"><i class="bi bi-plus me-1"></i>Add Session</button>
+                </div>
+                ${sessions.length ? sessions.map(s => `<div class="sc-session-card mb-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div><span class="badge bg-primary bg-opacity-25 text-primary me-1">${s.session_type}</span><strong>${s.title}</strong>
+                            ${s.speaker_name ? ' <small class="text-secondary">by '+s.speaker_name+'</small>' : ''}
+                            <div class="small text-secondary mt-1"><i class="bi bi-clock me-1"></i>${new Date(s.starts_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} – ${new Date(s.ends_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}${s.room?' · '+s.room:''}</div>
+                        </div>
+                        <button class="btn btn-outline-warning btn-sm" onclick="openCreatePoll('${s.id}')" title="Create Poll"><i class="bi bi-bar-chart"></i></button>
+                    </div>
+                </div>`).join('') : '<p class="text-secondary small">No sessions yet. Add one above.</p>'}
+            </div>`;
+        }
+        container.innerHTML = html;
+    } catch(e) { document.getElementById('myEventsList').innerHTML = '<p class="text-danger">Failed to load events.</p>'; }
+}
+
+// ── Open Create Session Modal ──────────────────────────────────────────
+function openCreateSession(eventId) {
+    document.getElementById('sessEventId').value = eventId;
+    document.getElementById('createSessionForm').reset();
+    document.getElementById('sessEventId').value = eventId;
+    new bootstrap.Modal(document.getElementById('createSessionModal')).show();
+}
+
+async function handleCreateSession(e) {
+    e.preventDefault();
+    const btn = document.getElementById('createSessBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
+    const token = localStorage.getItem('sc_token');
+    const payload = {
+        event_id: document.getElementById('sessEventId').value,
+        title: document.getElementById('sessTitle').value.trim(),
+        description: document.getElementById('sessDesc').value.trim() || null,
+        session_type: document.getElementById('sessType').value,
+        speaker_name: document.getElementById('sessSpeaker').value.trim() || null,
+        speaker_bio: document.getElementById('sessSpeakerBio').value.trim() || null,
+        room: document.getElementById('sessRoom').value.trim() || null,
+        starts_at: document.getElementById('sessStart').value.replace('T',' '),
+        ends_at: document.getElementById('sessEnd').value.replace('T',' '),
+    };
+    try {
+        const res = await fetch('/sessions', {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        const data = await res.json();
+        if (res.ok) { showToast('Session added!','success'); bootstrap.Modal.getInstance(document.getElementById('createSessionModal')).hide(); loadMyEvents(); }
+        else { showToast(data.error||'Failed','danger'); }
+    } catch(err) { showToast('Network error','danger'); }
+    finally { btn.disabled=false; btn.innerHTML='<i class="bi bi-plus-circle me-1"></i>Add Session'; }
+    return false;
+}
+
+// ── Open Create Poll Modal ─────────────────────────────────────────────
+function openCreatePoll(sessionId) {
+    document.getElementById('pollSessionId').value = sessionId;
+    document.getElementById('createPollForm').reset();
+    document.getElementById('pollSessionId').value = sessionId;
+    // Reset options to 2
+    const c = document.getElementById('pollOptionsContainer');
+    const label = c.querySelector('label');
+    c.innerHTML = '';
+    c.appendChild(label);
+    for (let i=1;i<=2;i++) { const d=document.createElement('div'); d.className='d-flex gap-2 mb-2'; d.innerHTML=`<input type="text" class="form-control sc-input poll-opt-input" placeholder="Option ${i}" required><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="bi bi-x"></i></button>`; c.appendChild(d); }
+    new bootstrap.Modal(document.getElementById('createPollModal')).show();
+}
+
+function addPollOption() {
+    const c = document.getElementById('pollOptionsContainer');
+    const n = c.querySelectorAll('.poll-opt-input').length + 1;
+    const d = document.createElement('div'); d.className='d-flex gap-2 mb-2';
+    d.innerHTML=`<input type="text" class="form-control sc-input poll-opt-input" placeholder="Option ${n}" required><button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="bi bi-x"></i></button>`;
+    c.appendChild(d);
+}
+
+async function handleCreatePoll(e) {
+    e.preventDefault();
+    const btn = document.getElementById('createPollBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating...';
+    const token = localStorage.getItem('sc_token');
+    const opts = Array.from(document.querySelectorAll('.poll-opt-input')).map(i=>i.value.trim()).filter(Boolean);
+    if (opts.length < 2) { showToast('At least 2 options required','danger'); btn.disabled=false; btn.innerHTML='<i class="bi bi-plus-circle me-1"></i>Create Poll'; return false; }
+    const payload = { session_id: document.getElementById('pollSessionId').value, question: document.getElementById('pollQuestion').value.trim(), options: opts };
+    try {
+        const res = await fetch('/polls', {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+        const data = await res.json();
+        if (res.ok) { showToast('Poll created!','success'); bootstrap.Modal.getInstance(document.getElementById('createPollModal')).hide(); }
+        else { showToast(data.error||'Failed','danger'); }
+    } catch(err) { showToast('Network error','danger'); }
+    finally { btn.disabled=false; btn.innerHTML='<i class="bi bi-plus-circle me-1"></i>Create Poll'; }
+    return false;
+}
+</script>
+{% endblock %}

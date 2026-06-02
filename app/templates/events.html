@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Browse Events – SkillConnect{% endblock %}
+
+{% block content %}
+<section class="py-5 mt-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div>
+                <h1 class="h3 mb-1">Events & Workshops</h1>
+                <p class="text-secondary mb-0">Live experiences to sharpen your skills and grow your network</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <div class="input-group" style="max-width:300px">
+                    <span class="input-group-text sc-input-icon"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control sc-input" placeholder="Search events..." id="eventSearch" oninput="searchEvents(this.value)">
+                </div>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary btn-sm active" onclick="filterType('all', this)">All</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="filterType('event', this)">Events</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="filterType('workshop', this)">Workshops</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4" id="eventsGrid">
+            <div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+    </div>
+</section>
+
+<script src="/static/js/events.js"></script>
+<script>
+let allEvents = [];
+let currentFilter = 'all';
+
+document.addEventListener('DOMContentLoaded', loadEvents);
+
+async function loadEvents() {
+    try {
+        const res = await fetch('/events');
+        const data = await res.json();
+        allEvents = data.events || [];
+        renderEvents(allEvents);
+    } catch(e) {
+        document.getElementById('eventsGrid').innerHTML = '<div class="col-12 text-center py-5"><p class="text-danger">Failed to load events.</p></div>';
+    }
+}
+
+function filterType(type, btn) {
+    currentFilter = type;
+    document.querySelectorAll('.btn-group .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+}
+
+function searchEvents(q) {
+    applyFilters(q);
+}
+
+function applyFilters(search) {
+    search = search || document.getElementById('eventSearch').value;
+    let filtered = allEvents;
+    if (currentFilter !== 'all') filtered = filtered.filter(e => e.event_type === currentFilter);
+    if (search) {
+        const s = search.toLowerCase();
+        filtered = filtered.filter(e => (e.title || '').toLowerCase().includes(s) || (e.description || '').toLowerCase().includes(s));
+    }
+    renderEvents(filtered);
+}
+
+function renderEvents(events) {
+    const grid = document.getElementById('eventsGrid');
+    if (!events.length) {
+        grid.innerHTML = '<div class="col-12 text-center py-5"><i class="bi bi-calendar-x text-secondary" style="font-size:3rem"></i><p class="text-secondary mt-2">No events found.</p></div>';
+        return;
+    }
+    grid.innerHTML = events.map(e => `
+        <div class="col-lg-4 col-md-6">
+            <div class="sc-event-card" onclick="window.location='/event/${e.id}'" style="cursor:pointer">
+                <div class="sc-event-card-header">
+                    <span class="sc-event-type-badge">${e.event_type === 'workshop' ? '🔧 Workshop' : '📅 Event'}</span>
+                    <span class="sc-event-price">${e.price > 0 ? '₹' + e.price : '✨ Free'}</span>
+                </div>
+                <h5 class="sc-event-title">${e.title}</h5>
+                <p class="sc-event-desc">${(e.description || '').substring(0, 140)}${e.description && e.description.length > 140 ? '...' : ''}</p>
+                <div class="sc-event-meta">
+                    <span><i class="bi bi-calendar3 me-1"></i>${new Date(e.event_date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</span>
+                    <span><i class="bi bi-geo-alt me-1"></i>${e.venue || (e.is_virtual ? '🌐 Virtual' : 'TBA')}</span>
+                </div>
+                <div class="sc-event-footer">
+                    <span><i class="bi bi-people me-1"></i>${e.registered_count || 0}/${e.capacity} registered</span>
+                    <span><i class="bi bi-collection me-1"></i>${e.sessions_count || 0} sessions</span>
+                </div>
+                ${e.tags && e.tags.length ? '<div class="sc-event-tags mt-2">' + e.tags.map(t => '<span class="badge bg-dark bg-opacity-50 me-1">' + t + '</span>').join('') + '</div>' : ''}
+            </div>
+        </div>
+    `).join('');
+}
+</script>
+{% endblock %}

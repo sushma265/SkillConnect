@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}Event Details – SkillConnect{% endblock %}
+
+{% block content %}
+<section class="py-5 mt-5">
+    <div class="container" id="eventDetailContainer">
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+    </div>
+</section>
+
+<script>
+const EVENT_ID = '{{ event_id }}';
+
+document.addEventListener('DOMContentLoaded', loadEventDetail);
+
+async function loadEventDetail() {
+    const container = document.getElementById('eventDetailContainer');
+    const token = localStorage.getItem('sc_token');
+    const authH = token ? {'Authorization': `Bearer ${token}`} : {};
+    try {
+        const res = await fetch(`/events/${EVENT_ID}`);
+        if (!res.ok) throw new Error('Event not found');
+        const data = await res.json();
+        const e = data.event;
+
+        const sessRes = await fetch(`/sessions?event_id=${EVENT_ID}`);
+        const sessData = await sessRes.json();
+        const sessions = sessData.sessions || [];
+
+        const fbRes = await fetch(`/feedback?type=event&item_id=${EVENT_ID}`);
+        const fbData = await fbRes.json();
+        const feedback = fbData.feedback || [];
+        const avgRating = feedback.length ? (feedback.reduce((s,f)=>s+f.rating,0)/feedback.length).toFixed(1) : '–';
+
+        // Build sessions HTML with polls & feedback
+        let sessionsHtml = '';
+        for (const s of sessions) {
+            // Load polls for this session
+            let pollsHtml = '';
+            try {
+                const pRes = await fetch(`/polls?session_id=${s.id}`);
+                const pData = await pRes.json();
+                const polls = pData.polls || [];
+                if (polls.length) {
+                    pollsHtml = '<div class="mt-3 pt-3 border-top" style="border-color:var(--sc-border)!important"><h6 class="small fw-600 text-warning mb-2"><i class="bi bi-bar-chart me-1"></i>Polls</h6>';
+                    for (const p of polls) {
+                        const pResDetail = await fetch(`/polls/results/${p.id}`);
+                        const pDetail = await pResDetail.json();
+                        const poll = pDetail.poll || p;
+                        const options = poll.options || [];
+                        const totalVotes = options.reduce((s,o)=>s+(o.vote_count||0),0);
+                        pollsHtml += `<div class="mb-3 p-3" style="background:rgba(245,158,11,0.05);border-radius:var(--sc-radius-sm);border:1px solid rgba(245,158,11,0.15)">
+                            <p class="mb-2 fw-600">${poll.question}</p>
+                            ${options.map(o => {
+                                const pct = totalVotes > 0 ? Math.round((o.vote_count||0)/totalVotes*100) : 0;
+                                return `<div class="mb-2">
+                                    <div class="d-flex justify-content-between small mb-1"><span>${o.text}</span><span class="text-secondary">${o.vote_count||0} votes (${pct}%)</span></div>
+                                    <div class="progress" style="height:6px"><div class="progress-bar bg-warning" style="width:${pct}%"></div></div>
+                                </div>`;
+                            }).join('')}
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-secondary">${totalVotes} total votes</small>
+                                ${poll.is_active && token ? `<div class="d-flex gap-1 flex-wrap">${options.map(o => `<button class="btn btn-outline-warning btn-sm" onclick="voteOnPoll('${poll.id}','${o.id}')">${o.text}</button>`).join('')}</div>` : ''}
+                            </div>
+                        </div>`;
+                    }
+                    pollsHtml += '</div>';
+                }
+            } catch(pe) { /* polls non-critical */ }
+
+            // Session feedback
+            let sessFbHtml = '';
+            try {
+                const sfRes = await fetch(`/feedback?type=session&item_id=${s.id}`);
+                const sfData = await sfRes.json();
+                const sfb = sfData.feedback || [];
+                if (sfb.length) {
+                    const savg = (sfb.reduce((a,f)=>a+f.rating,0)/sfb.length).toFixed(1);
+                    sessFbHtml = `<div class="mt-2"><small class="text-warning">${savg} ★ (${sfb.length} reviews)</small></div>`;
+                }
+            } catch(fe) {}
+
+            sessionsHtml += `<div class="sc-session-card mb-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="badge bg-primary bg-opacity-25 text-primary mb-1">${s.session_type}</span>
+                        <h6 class="mb-1">${s.title}</h6>
+                        ${s.speaker_name ? '<p class="small text-secondary mb-1"><i class="bi bi-person me-1"></i>'+s.speaker_name+'</p>' : ''}
+                        <p class="small text-secondary mb-0"><i class="bi bi-clock me-1"></i>${new Date(s.starts_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} – ${new Date(s.ends_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</p>
+                        ${s.room?'<p class="small text-secondary mb-0"><i class="bi bi-geo me-1"></i>Room: '+s.room+'</p>':''}
+                        ${sessFbHtml}
+                    </div>
+                    ${token ? `<button class="btn btn-outline-success btn-sm" onclick="toggleSessionFeedback('${s.id}')"><i class="bi bi-star me-1"></i>Rate</button>` : ''}
+                </div>
+                ${s.description ? '<p class="small text-secondary mt-2 mb-0">'+s.description+'</p>' : ''}
+                <!-- Session feedback form (hidden by default) -->
+                <div class="d-none mt-3 pt-3 border-top" style="border-color:var(--sc-border)!important" id="sessFb_${s.id}">
+                    <h6 class="small fw-600 text-success"><i class="bi bi-star me-1"></i>Rate this Session</h6>
+                    <div class="d-flex gap-1 mb-2" id="sessStars_${s.id}">
+                        ${[1,2,3,4,5].map(n=>`<button class="btn btn-outline-warning btn-sm sess-star" onclick="setSessionRating('${s.id}',${n})" data-val="${n}">★</button>`).join('')}
+                    </div>
+                    <textarea class="form-control sc-input mb-2" rows="2" placeholder="Optional comment..." id="sessFbComment_${s.id}"></textarea>
+                    <button class="btn btn-success btn-sm" onclick="submitSessionFeedback('${s.id}')"><i class="bi bi-send me-1"></i>Submit</button>
+                </div>
+                ${pollsHtml}
+            </div>`;
+        }
+
+        container.innerHTML = `
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <a href="/browse-events" class="text-decoration-none text-secondary mb-3 d-inline-block"><i class="bi bi-arrow-left me-1"></i>Back to Events</a>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="sc-event-type-badge">${e.event_type==='workshop'?'🔧 Workshop':'📅 Event'}</span>
+                        ${e.is_virtual?'<span class="badge bg-info">🌐 Virtual</span>':''}
+                    </div>
+                    <h1 class="h2 mb-2">${e.title}</h1>
+                    <p class="text-secondary">${e.description}</p>
+                    ${e.tags&&e.tags.length?'<div class="mb-3">'+e.tags.map(t=>'<span class="badge bg-dark bg-opacity-50 me-1">'+t+'</span>').join('')+'</div>':''}
+
+                    <div class="mb-4">
+                        <h4 class="mb-3"><i class="bi bi-collection-play me-2"></i>Sessions (${sessions.length})</h4>
+                        ${sessions.length ? sessionsHtml : '<p class="text-secondary">No sessions scheduled yet.</p>'}
+                    </div>
+
+                    <!-- Event Feedback Section -->
+                    <div class="mb-4">
+                        <h4 class="mb-3"><i class="bi bi-star me-2"></i>Event Feedback (${feedback.length})</h4>
+                        ${token ? `<div class="sc-sidebar-card mb-3">
+                            <h6 class="small fw-600"><i class="bi bi-pencil me-1"></i>Leave your feedback</h6>
+                            <div class="d-flex gap-1 mb-2" id="eventStars">
+                                ${[1,2,3,4,5].map(n=>`<button class="btn btn-outline-warning btn-sm ev-star" onclick="setEventRating(${n})" data-val="${n}">★</button>`).join('')}
+                            </div>
+                            <textarea class="form-control sc-input mb-2" rows="2" placeholder="Share your experience..." id="eventFbComment"></textarea>
+                            <button class="btn btn-primary btn-sm sc-btn-primary" onclick="submitEventFeedback()"><i class="bi bi-send me-1"></i>Submit Feedback</button>
+                        </div>` : '<p class="text-secondary small"><a href="/login">Login</a> to leave feedback.</p>'}
+                        ${feedback.length ? feedback.slice(0,5).map(f=>`<div class="sc-feedback-card mb-2"><div class="d-flex justify-content-between"><strong>${f.user_name||'Anonymous'}</strong><span class="text-warning">${'★'.repeat(f.rating)}${'☆'.repeat(5-f.rating)}</span></div>${f.comment?'<p class="small text-secondary mb-0 mt-1">'+f.comment+'</p>':''}</div>`).join('') : '<p class="text-secondary">No feedback yet. Be the first!</p>'}
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="sc-sidebar-card mb-3">
+                        <div class="sc-sidebar-stat mb-3"><div class="d-flex justify-content-between"><span class="text-secondary">Date</span><span>${new Date(e.event_date).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div></div>
+                        <div class="sc-sidebar-stat mb-3"><div class="d-flex justify-content-between"><span class="text-secondary">Venue</span><span>${e.venue||(e.is_virtual?'Virtual':'TBA')}</span></div></div>
+                        <div class="sc-sidebar-stat mb-3"><div class="d-flex justify-content-between"><span class="text-secondary">Price</span><span class="fw-600">${e.price>0?'₹'+e.price:'Free'}</span></div></div>
+                        <div class="sc-sidebar-stat mb-3"><div class="d-flex justify-content-between"><span class="text-secondary">Capacity</span><span>${e.registered_count||0} / ${e.capacity}</span></div>
+                            <div class="progress mt-2" style="height:4px"><div class="progress-bar bg-primary" style="width:${Math.min(100,((e.registered_count||0)/e.capacity)*100)}%"></div></div>
+                        </div>
+                        <div class="sc-sidebar-stat mb-3"><div class="d-flex justify-content-between"><span class="text-secondary">Rating</span><span class="text-warning">${avgRating} ★</span></div></div>
+                        <button class="btn btn-primary w-100 sc-btn-primary" onclick="registerForEvent('${e.id}')"><i class="bi bi-ticket-perforated me-1"></i>Register Now</button>
+                    </div>
+                </div>
+            </div>`;
+    } catch(err) {
+        container.innerHTML = '<div class="text-center py-5"><i class="bi bi-exclamation-triangle text-warning" style="font-size:3rem"></i><h4 class="mt-3">Event Not Found</h4><a href="/browse-events" class="btn btn-primary mt-2">Browse Events</a></div>';
+    }
+}
+
+// ── Event Registration ─────────────────────────────────────────────────
+async function registerForEvent(eventId) {
+    const token = localStorage.getItem('sc_token');
+    if (!token) { window.location.href='/login'; return; }
+    try {
+        const res = await fetch(`/events/${eventId}/register`, {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}});
+        const data = await res.json();
+        showToast(res.ok ? (data.message||'Registered!') : (data.error||'Failed'), res.ok?'success':'danger');
+        if (res.ok) loadEventDetail();
+    } catch(e) { showToast('Network error','danger'); }
+}
+
+// ── Poll Voting ────────────────────────────────────────────────────────
+async function voteOnPoll(pollId, optionId) {
+    const token = localStorage.getItem('sc_token');
+    if (!token) { showToast('Login to vote','warning'); return; }
+    try {
+        const res = await fetch('/polls/vote', {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({poll_id:pollId, option_ids:[optionId]})});
+        const data = await res.json();
+        showToast(res.ok ? 'Vote cast!' : (data.error||'Failed'), res.ok?'success':'danger');
+        if (res.ok) loadEventDetail();
+    } catch(e) { showToast('Network error','danger'); }
+}
+
+// ── Event Feedback ─────────────────────────────────────────────────────
+let eventRating = 0;
+function setEventRating(n) {
+    eventRating = n;
+    document.querySelectorAll('.ev-star').forEach(b => {
+        b.classList.toggle('btn-warning', parseInt(b.dataset.val) <= n);
+        b.classList.toggle('btn-outline-warning', parseInt(b.dataset.val) > n);
+    });
+}
+
+async function submitEventFeedback() {
+    if (!eventRating) { showToast('Select a rating','warning'); return; }
+    const token = localStorage.getItem('sc_token');
+    if (!token) { window.location.href='/login'; return; }
+    const comment = document.getElementById('eventFbComment').value.trim();
+    try {
+        const res = await fetch('/feedback', {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({feedback_type:'event', item_id:EVENT_ID, rating:eventRating, comment:comment||null})});
+        const data = await res.json();
+        showToast(res.ok ? 'Feedback submitted!' : (data.error||'Failed'), res.ok?'success':'danger');
+        if (res.ok) { eventRating=0; loadEventDetail(); }
+    } catch(e) { showToast('Network error','danger'); }
+}
+
+// ── Session Feedback ───────────────────────────────────────────────────
+let sessionRatings = {};
+function toggleSessionFeedback(sessId) {
+    document.getElementById('sessFb_'+sessId).classList.toggle('d-none');
+}
+
+function setSessionRating(sessId, n) {
+    sessionRatings[sessId] = n;
+    document.querySelectorAll(`#sessStars_${sessId} .sess-star`).forEach(b => {
+        b.classList.toggle('btn-warning', parseInt(b.dataset.val) <= n);
+        b.classList.toggle('btn-outline-warning', parseInt(b.dataset.val) > n);
+    });
+}
+
+async function submitSessionFeedback(sessId) {
+    const rating = sessionRatings[sessId];
+    if (!rating) { showToast('Select a rating','warning'); return; }
+    const token = localStorage.getItem('sc_token');
+    if (!token) { window.location.href='/login'; return; }
+    const comment = document.getElementById('sessFbComment_'+sessId).value.trim();
+    try {
+        const res = await fetch('/feedback', {method:'POST', headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}, body:JSON.stringify({feedback_type:'session', item_id:sessId, rating:rating, comment:comment||null})});
+        const data = await res.json();
+        showToast(res.ok ? 'Session feedback submitted!' : (data.error||'Failed'), res.ok?'success':'danger');
+        if (res.ok) { delete sessionRatings[sessId]; loadEventDetail(); }
+    } catch(e) { showToast('Network error','danger'); }
+}
+</script>
+{% endblock %}

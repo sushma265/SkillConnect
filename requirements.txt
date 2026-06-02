@@ -1,15 +1,28 @@
-﻿Authlib==1.7.2
-Flask==3.0.3
-Flask-JWT-Extended==4.6.0
-Flask-SQLAlchemy==3.1.1
-flasgger==0.9.7.1
-google-generativeai==0.8.6
-gunicorn==26.0.0
-PyJWT==2.13.0
+# SkillConnect – Python Dependencies
+# =====================================
+
+# Core Framework
+flask==3.0.3
 python-dotenv==1.0.1
-razorpay==2.0.1
-requests==2.34.2
-setuptools==82.0.1
-SQLAlchemy==2.0.45
-Werkzeug==3.0.3
-google-auth-oauthlib
+
+# MongoDB ORM
+mongoengine==0.28.2
+
+# Authentication
+flask-jwt-extended==4.6.0
+werkzeug==3.0.3
+
+# Google OAuth
+google-auth==2.29.0
+google-auth-oauthlib==1.2.0
+requests==2.31.0
+
+# QR Code Generation
+qrcode[pil]==7.4.2
+Pillow==10.3.0
+
+# Production Server
+gunicorn==22.0.0
+
+# Utilities
+flask-cors==4.0.1

@@ -1,31 +1,44 @@
-from flask import Blueprint, request, jsonify, redirect, url_for, session
+"""
+SkillConnect – Authentication Routes
+========================================
+Handles user registration, login (email + password), token refresh,
+current-user retrieval, and Google OAuth 2.0 flow.
+"""
+
+from flask import (
+    Blueprint, request, jsonify, redirect,
+    session as flask_session,
+)
 from flask_jwt_extended import (
-    create_access_token,
-    jwt_required,
-    get_jwt_identity
+    create_access_token, create_refresh_token,
+    jwt_required, get_jwt_identity,
 )
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from google_auth_oauthlib.flow import Flow
 import os
 
-from app import db
-from app.models import User
+from app.models.user_model import User
+from app.utils.jwt_utils import get_current_user
 
 auth_bp = Blueprint("auth", __name__)
 
-# ─── Google OAuth Config ──────────────────────────────────────────────────────
-GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID")
+# ── Google OAuth settings ───────────────────────────────────────────────
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI  = os.environ.get("GOOGLE_REDIRECT_URI", "https://skillconnect-12m0.onrender.com/auth/google/callback")
+GOOGLE_REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI",
+    "http://localhost:5000/auth/google/callback",
+)
+SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
 
-# Scopes we request from Google
-SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email",
-          "https://www.googleapis.com/auth/userinfo.profile"]
 
-
-def make_flow():
-    """Create a fresh OAuth flow object per request."""
+def _make_flow():
+    """Build a Google OAuth Flow from environment credentials."""
     return Flow.from_client_config(
         {
             "web": {
@@ -39,16 +52,16 @@ def make_flow():
         scopes=SCOPES,
         redirect_uri=GOOGLE_REDIRECT_URI,
     )
-# ─── Existing Signup ───────────────────────────────────────────────────────────
-@auth_bp.route("/signup", methods=["POST"])
-def signup():
+
+
+# ── POST /auth/register ────────────────────────────────────────────────
+@auth_bp.route("/register", methods=["POST"])
+def register():
     """
-    User Signup API
+    Register a new user with email and password.
     ---
-    tags:
-      - Authentication
-    consumes:
-      - application/json
+    tags: [Authentication]
+    consumes: [application/json]
     parameters:
       - in: body
         name: body
@@ -57,46 +70,60 @@ def signup():
           type: object
           required: [name, email, password]
           properties:
-            name:     { type: string, example: John Doe }
-            email:    { type: string, example: john@gmail.com }
-            password: { type: string, example: password123 }
-            role:     { type: string, example: user }
+            name:     {type: string, example: Jane Doe}
+            email:    {type: string, example: jane@example.com}
+            password: {type: string, example: SecurePass123}
+            role:     {type: string, example: attendee}
     responses:
-      201: { description: Account created successfully }
-      400: { description: Missing fields or invalid role }
-      409: { description: Email already exists }
+      201: {description: Account created}
+      409: {description: Email already registered}
     """
     data = request.get_json()
 
+    # Validate required fields
     for field in ["name", "email", "password"]:
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
 
-    if User.query.filter_by(email=data["email"]).first():
+    # Check for existing email
+    if User.objects(email=data["email"]).first():
         return jsonify({"error": "Email already registered"}), 409
 
-    role = data.get("role", "user")
-    if role not in ["user", "conductor"]:
-        return jsonify({"error": "Role must be one of ['user', 'conductor']"}), 400
+    # Validate role
+    role = data.get("role", "attendee")
+    if role not in ["attendee", "organizer"]:
+        return jsonify({
+            "error": "Role must be 'attendee' or 'organizer'"
+        }), 400
 
+    # Create user
     user = User(name=data["name"], email=data["email"], role=role)
     user.set_password(data["password"])
-    db.session.add(user)
-    db.session.commit()
+    user.save()
 
-    return jsonify({"message": "Account created successfully", "user": user.to_dict()}), 201
+    # Generate tokens
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": user.role, "name": user.name},
+    )
+    refresh_token = create_refresh_token(identity=str(user.id))
+
+    return jsonify({
+        "message": "Account created successfully",
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "user": user.to_dict(),
+    }), 201
 
 
-# ─── Existing Login ────────────────────────────────────────────────────────────
+# ── POST /auth/login ───────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])
 def login():
     """
-    User Login API
+    Authenticate with email and password.
     ---
-    tags:
-      - Authentication
-    consumes:
-      - application/json
+    tags: [Authentication]
+    consumes: [application/json]
     parameters:
       - in: body
         name: body
@@ -105,169 +132,171 @@ def login():
           type: object
           required: [email, password]
           properties:
-            email:    { type: string, example: john@gmail.com }
-            password: { type: string, example: password123 }
+            email:    {type: string}
+            password: {type: string}
     responses:
-      200: { description: Login successful }
-      400: { description: Missing email or password }
-      401: { description: Invalid credentials }
-      403: { description: Account deactivated }
+      200: {description: Login successful}
+      401: {description: Invalid credentials}
     """
     data = request.get_json()
 
     if not data.get("email") or not data.get("password"):
-        return jsonify({"error": "Email and password are required"}), 400
+        return jsonify({
+            "error": "Email and password are required"
+        }), 400
 
-    user = User.query.filter_by(email=data["email"]).first()
-
+    user = User.objects(email=data["email"]).first()
     if not user or not user.check_password(data["password"]):
         return jsonify({"error": "Invalid email or password"}), 401
 
     if not user.is_active:
-        return jsonify({"error": "Account is deactivated. Contact admin."}), 403
+        return jsonify({
+            "error": "Account is deactivated. Contact admin."
+        }), 403
 
     access_token = create_access_token(
         identity=str(user.id),
-        additional_claims={"role": user.role, "name": user.name}
+        additional_claims={"role": user.role, "name": user.name},
     )
+    refresh_token = create_refresh_token(identity=str(user.id))
 
     return jsonify({
-        "message":      "Login successful",
+        "message": "Login successful",
         "access_token": access_token,
-        "user":         user.to_dict()
+        "refresh_token": refresh_token,
+        "user": user.to_dict(),
     }), 200
 
 
-# ─── Get Current User ──────────────────────────────────────────────────────────
+# ── POST /auth/refresh ─────────────────────────────────────────────────
+@auth_bp.route("/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    """
+    Refresh an expired access token using a valid refresh token.
+    ---
+    tags: [Authentication]
+    security: [{Bearer: []}]
+    responses:
+      200: {description: New access token}
+    """
+    current_user_id = get_jwt_identity()
+    user = User.objects(id=current_user_id).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    new_access = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": user.role, "name": user.name},
+    )
+    return jsonify({"access_token": new_access}), 200
+
+
+# ── GET /auth/me ────────────────────────────────────────────────────────
 @auth_bp.route("/me", methods=["GET"])
 @jwt_required()
 def me():
     """
-    Get Current User
+    Get the currently-authenticated user's profile.
     ---
-    tags:
-      - Authentication
+    tags: [Authentication]
+    security: [{Bearer: []}]
     responses:
-      200: { description: Current logged in user }
-      401: { description: Unauthorized }
-      404: { description: User not found }
+      200: {description: Current user}
     """
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-
+    user = get_current_user()
     if not user:
         return jsonify({"error": "User not found"}), 404
-
     return jsonify({"user": user.to_dict()}), 200
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  GOOGLE OAUTH  —  Step 1: Redirect user to Google's consent screen
-# ══════════════════════════════════════════════════════════════════════════════
+# ── GET /auth/google ────────────────────────────────────────────────────
 @auth_bp.route("/google", methods=["GET"])
 def google_login():
     """
-    Initiate Google OAuth flow.
-    Frontend calls: window.location.href = '/auth/google'
-    ---
-    tags:
-      - Authentication
-    responses:
-      302: { description: Redirect to Google consent screen }
+    Initiate Google OAuth 2.0 login flow.
+    Redirects the user to Google's consent screen.
     """
-    flow = make_flow()
+    flow = _make_flow()
     auth_url, state = flow.authorization_url(
         access_type="offline",
-        include_granted_scopes="true",
-        prompt="select_account"          # always show account picker
+        prompt="select_account",
     )
-    session["oauth_state"] = state       # stored in Flask session to verify callback
+    flask_session["oauth_state"] = state
     return redirect(auth_url)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-#  GOOGLE OAUTH  —  Step 2: Handle the callback from Google
-# ══════════════════════════════════════════════════════════════════════════════
+# ── GET /auth/google/callback ──────────────────────────────────────────
 @auth_bp.route("/google/callback", methods=["GET"])
 def google_callback():
     """
-    Google OAuth callback — called by Google after user consents.
-    Verifies the token, finds/creates the user, issues a JWT,
-    then redirects the frontend to /?token=<jwt>
-    ---
-    tags:
-      - Authentication
-    responses:
-      302: { description: Redirect to frontend with token or error }
+    Handle Google OAuth callback.
+    Exchanges the authorisation code for tokens, creates or
+    updates the user, and redirects to the frontend with a JWT.
     """
-    # ── 1. Check for errors from Google ──────────────────────────────────────
     error = request.args.get("error")
     if error:
         return redirect(f"/?auth_error={error}")
 
-    # ── 2. Verify state to prevent CSRF ──────────────────────────────────────
-    state = request.args.get("state")
-    if state != session.get("oauth_state"):
+    # Validate state parameter
+    if request.args.get("state") != flask_session.get("oauth_state"):
         return redirect("/?auth_error=state_mismatch")
 
-    # ── 3. Exchange the code for tokens ──────────────────────────────────────
+    # Exchange authorisation code for tokens
     try:
-        flow = make_flow()
+        flow = _make_flow()
         flow.fetch_token(authorization_response=request.url)
         credentials = flow.credentials
-    except Exception as e:
-        return redirect(f"/?auth_error=token_exchange_failed")
+    except Exception:
+        return redirect("/?auth_error=token_exchange_failed")
 
-    # ── 4. Verify the ID token with Google's public keys ─────────────────────
+    # Verify the ID token
     try:
         id_info = id_token.verify_oauth2_token(
             credentials.id_token,
             google_requests.Request(),
-            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_ID,
         )
     except ValueError:
         return redirect("/?auth_error=invalid_token")
 
-    # ── 5. Extract user info from the verified token ──────────────────────────
-    google_id = id_info.get("sub")       # unique Google user ID
-    email     = id_info.get("email")
-    name      = id_info.get("name") or email.split("@")[0]
-    picture   = id_info.get("picture")   # optional — store if you want avatars
+    google_id = id_info.get("sub")
+    email = id_info.get("email")
+    name = id_info.get("name") or email.split("@")[0]
 
     if not email:
         return redirect("/?auth_error=no_email")
 
-    # ── 6. Find existing user or create a new one ─────────────────────────────
-    user = User.query.filter_by(email=email).first()
-
+    # Find or create user
+    user = User.objects(email=email).first()
     if user:
-        # Existing user: update Google ID if this is their first OAuth login
-        if not getattr(user, "google_id", None):
+        if not user.google_id:
             user.google_id = google_id
-            db.session.commit()
+            user.save()
     else:
-        # Brand new user — create with role "user" (student) by default
         user = User(
             name=name,
             email=email,
-            role="user",
+            role="attendee",
             google_id=google_id,
-            # No password for OAuth users; set_password not called
         )
-        db.session.add(user)
-        db.session.commit()
+        user.password_hash = "oauth-no-password"
+        if id_info.get("picture"):
+            user.avatar_url = id_info["picture"]
+        user.save()
 
-    # ── 7. Check if account is active ────────────────────────────────────────
     if not user.is_active:
         return redirect("/?auth_error=account_deactivated")
 
-    # ── 8. Issue a JWT just like the normal login flow ────────────────────────
+    # Issue JWT and redirect to frontend
     access_token = create_access_token(
         identity=str(user.id),
-        additional_claims={"role": user.role, "name": user.name}
+        additional_claims={"role": user.role, "name": user.name},
     )
-
-    # ── 9. Redirect frontend — token passed as query param ───────────────────
-    #       The frontend JS reads this, stores it, and cleans the URL.
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5000")
-    return redirect(f"{frontend_url}/?sc_token={access_token}&sc_user_id={user.id}")
+    frontend_url = os.environ.get(
+        "FRONTEND_URL", "http://localhost:5000"
+    )
+    return redirect(
+        f"{frontend_url}/?sc_token={access_token}"
+        f"&sc_user_id={user.id}"
+    )

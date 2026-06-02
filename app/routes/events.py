@@ -1,455 +1,300 @@
+"""
+SkillConnect – Event Routes
+==============================
+CRUD operations for events and event registration.
+"""
+
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
 from datetime import datetime
 
-from app import db
-from app.models import Event, Registration
-from app.utils import role_required, get_current_user
+from app.models.event_model import Event
+from app.models.registration_model import Registration
+from app.utils.decorators import role_required
+from app.utils.jwt_utils import get_current_user, get_object_or_404
 
 events_bp = Blueprint("events", __name__)
-
 DATE_FMT = "%Y-%m-%d %H:%M"
 
 
-def parse_date(date_str):
+def _parse_date(s):
+    """Parse a date string in 'YYYY-MM-DD HH:MM' format."""
     try:
-        return datetime.strptime(date_str, DATE_FMT)
+        return datetime.strptime(s, DATE_FMT)
     except (ValueError, TypeError):
         return None
+
+
+# ── POST /events ────────────────────────────────────────────────────────
 @events_bp.route("", methods=["POST"])
 @jwt_required()
-@role_required("conductor", "admin")
+@role_required("organizer", "admin")
 def create_event():
     """
-    Create Event API
+    Create a new event.
     ---
-    tags:
-      - Events
-
-    security:
-      - Bearer: []
-
-    consumes:
-      - application/json
-
-    parameters:
-      - in: body
-        name: body
-        required: true
-
-        schema:
-          type: object
-
-          required:
-            - title
-            - description
-            - event_date
-
-          properties:
-            title:
-              type: string
-              example: Python Workshop
-
-            description:
-              type: string
-              example: Learn Flask and JWT
-
-            event_date:
-              type: string
-              example: 2026-06-01 10:30
-
-            event_type:
-              type: string
-              example: workshop
-
-            venue:
-              type: string
-              example: Hyderabad
-
-            price:
-              type: number
-              example: 499
-
-            capacity:
-              type: integer
-              example: 100
-
-    responses:
-      201:
-        description: Event created successfully
-
-      400:
-        description: Invalid request
-
-      401:
-        description: Unauthorized
+    tags: [Events]
+    security: [{Bearer: []}]
     """
-
     data = request.get_json()
 
-    required = ["title", "description", "event_date"]
-
-    for field in required:
+    for field in ["title", "description", "event_date"]:
         if not data.get(field):
-            return jsonify({
-                "error": f"{field} is required"
-            }), 400
+            return jsonify({"error": f"{field} is required"}), 400
 
-    event_date = parse_date(data["event_date"])
-
+    event_date = _parse_date(data["event_date"])
     if not event_date:
         return jsonify({
-            "error": "event_date must be in 'YYYY-MM-DD HH:MM' format"
+            "error": "event_date must be 'YYYY-MM-DD HH:MM'"
         }), 400
 
     event_type = data.get("event_type", "event")
-
     if event_type not in ("event", "workshop"):
         return jsonify({
             "error": "event_type must be 'event' or 'workshop'"
         }), 400
 
-    user_id = get_jwt_identity()
+    end_date = None
+    if data.get("end_date"):
+        end_date = _parse_date(data["end_date"])
 
-    event = Event(
+    user = get_current_user()
+    ev = Event(
         title=data["title"],
         description=data["description"],
         event_type=event_type,
         venue=data.get("venue"),
         event_date=event_date,
+        end_date=end_date,
         price=float(data.get("price", 0)),
         capacity=int(data.get("capacity", 100)),
-        created_by=int(user_id),
+        tags=data.get("tags", []),
+        is_virtual=bool(data.get("is_virtual", False)),
+        meeting_link=data.get("meeting_link"),
+        banner_url=data.get("banner_url"),
+        created_by=user,
     )
-
-    db.session.add(event)
-    db.session.commit()
-
+    ev.save()
     return jsonify({
         "message": "Event created",
-        "event": event.to_dict()
+        "event": ev.to_dict(),
     }), 201
 
 
+# ── GET /events ─────────────────────────────────────────────────────────
 @events_bp.route("", methods=["GET"])
 def get_all_events():
     """
-    Get All Events API
+    Get all events, optionally filtered by type or search query.
     ---
-    tags:
-      - Events
-
-    parameters:
-      - name: type
-        in: query
-        type: string
-        required: false
-        example: workshop
-
-    responses:
-      200:
-        description: List of events returned
+    tags: [Events]
     """
-
     event_type = request.args.get("type")
+    search = request.args.get("search", "").strip()
 
-    query = Event.query
+    qs = Event.objects()
 
     if event_type:
-        query = query.filter_by(event_type=event_type)
+        qs = qs.filter(event_type=event_type)
 
-    events = query.order_by(Event.event_date.asc()).all()
+    if search:
+        qs = qs.filter(
+            __raw__={
+                "$or": [
+                    {"title": {"$regex": search, "$options": "i"}},
+                    {
+                        "description": {
+                            "$regex": search,
+                            "$options": "i",
+                        }
+                    },
+                ]
+            }
+        )
 
+    events = qs.order_by("event_date")
     return jsonify({
         "events": [e.to_dict() for e in events]
     }), 200
 
 
-@events_bp.route("/<int:event_id>", methods=["GET"])
+# ── GET /events/<id> ────────────────────────────────────────────────────
+@events_bp.route("/<event_id>", methods=["GET"])
 def get_event(event_id):
     """
-    Get Single Event API
+    Get a single event by ID.
     ---
-    tags:
-      - Events
-
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-
-    responses:
-      200:
-        description: Event details returned
-
-      404:
-        description: Event not found
+    tags: [Events]
     """
-
-    event = Event.query.get_or_404(
-        event_id,
-        description="Event not found"
+    ev = get_object_or_404(
+        Event, id=event_id, description="Event not found"
     )
-
-    return jsonify({
-        "event": event.to_dict()
-    }), 200
+    return jsonify({"event": ev.to_dict()}), 200
 
 
-@events_bp.route("/<int:event_id>", methods=["PUT"])
+# ── PUT /events/<id> ────────────────────────────────────────────────────
+@events_bp.route("/<event_id>", methods=["PUT"])
 @jwt_required()
-@role_required("conductor", "admin")
+@role_required("organizer", "admin")
 def update_event(event_id):
     """
-    Update Event API
+    Update an existing event.
     ---
-    tags:
-      - Events
-
-    security:
-      - Bearer: []
-
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-
-      - in: body
-        name: body
-        required: true
-
-        schema:
-          type: object
-
-          properties:
-            title:
-              type: string
-
-            description:
-              type: string
-
-            venue:
-              type: string
-
-            event_type:
-              type: string
-
-            price:
-              type: number
-
-            capacity:
-              type: integer
-
-            event_date:
-              type: string
-              example: 2026-06-01 10:30
-
-    responses:
-      200:
-        description: Event updated successfully
-
-      403:
-        description: Unauthorized
-
-      404:
-        description: Event not found
+    tags: [Events]
+    security: [{Bearer: []}]
     """
-
-    event = Event.query.get_or_404(
-        event_id,
-        description="Event not found"
+    ev = get_object_or_404(
+        Event, id=event_id, description="Event not found"
     )
-
     user = get_current_user()
 
-    if user.role != "admin" and event.created_by != user.id:
+    # Only the creator or admin can update
+    if (
+        user.role != "admin"
+        and str(ev.created_by.id) != str(user.id)
+    ):
         return jsonify({
             "error": "You can only update your own events"
         }), 403
 
     data = request.get_json()
 
-    for field in ["title", "description", "venue", "event_type"]:
+    text_fields = [
+        "title", "description", "venue", "event_type",
+        "banner_url", "meeting_link",
+    ]
+    for field in text_fields:
         if field in data:
-            setattr(event, field, data[field])
+            setattr(ev, field, data[field])
 
     if "price" in data:
-        event.price = float(data["price"])
-
+        ev.price = float(data["price"])
     if "capacity" in data:
-        event.capacity = int(data["capacity"])
-
+        ev.capacity = int(data["capacity"])
+    if "is_virtual" in data:
+        ev.is_virtual = bool(data["is_virtual"])
+    if "tags" in data:
+        ev.tags = data["tags"]
     if "event_date" in data:
-        parsed = parse_date(data["event_date"])
-
+        parsed = _parse_date(data["event_date"])
         if not parsed:
             return jsonify({
-                "error": "event_date must be in 'YYYY-MM-DD HH:MM' format"
+                "error": "event_date must be 'YYYY-MM-DD HH:MM'"
             }), 400
+        ev.event_date = parsed
+    if "end_date" in data:
+        parsed = _parse_date(data["end_date"])
+        if parsed:
+            ev.end_date = parsed
 
-        event.event_date = parsed
-
-    db.session.commit()
-
+    ev.save()
     return jsonify({
         "message": "Event updated",
-        "event": event.to_dict()
+        "event": ev.to_dict(),
     }), 200
 
 
-@events_bp.route("/<int:event_id>", methods=["DELETE"])
+# ── DELETE /events/<id> ─────────────────────────────────────────────────
+@events_bp.route("/<event_id>", methods=["DELETE"])
 @jwt_required()
-@role_required("conductor", "admin")
+@role_required("organizer", "admin")
 def delete_event(event_id):
     """
-    Delete Event API
+    Delete an event.
     ---
-    tags:
-      - Events
-
-    security:
-      - Bearer: []
-
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-
-    responses:
-      200:
-        description: Event deleted successfully
-
-      403:
-        description: Unauthorized
-
-      404:
-        description: Event not found
+    tags: [Events]
+    security: [{Bearer: []}]
     """
-
-    event = Event.query.get_or_404(
-        event_id,
-        description="Event not found"
+    ev = get_object_or_404(
+        Event, id=event_id, description="Event not found"
     )
-
     user = get_current_user()
 
-    if user.role != "admin" and event.created_by != user.id:
+    if (
+        user.role != "admin"
+        and str(ev.created_by.id) != str(user.id)
+    ):
         return jsonify({
             "error": "You can only delete your own events"
         }), 403
 
-    db.session.delete(event)
-    db.session.commit()
-    return jsonify({
-        "message": "Event deleted"
-    }), 200
-@events_bp.route("/<int:event_id>/register", methods=["POST"])
+    ev.delete()
+    return jsonify({"message": "Event deleted"}), 200
+
+
+# ── POST /events/<id>/register ──────────────────────────────────────────
+@events_bp.route("/<event_id>/register", methods=["POST"])
 @jwt_required()
-def register_for_event():
+def register_for_event(event_id):
     """
-    Register For Event API
+    Register the current user for an event.
     ---
-    tags:
-      - Events
-
-    security:
-      - Bearer: []
-
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-
-    responses:
-      201:
-        description: Registered successfully
-
-      400:
-        description: Event full or invalid request
-
-      404:
-        description: Event not found
-
-      409:
-        description: Already registered
+    tags: [Events]
+    security: [{Bearer: []}]
     """
-
-    event = Event.query.get_or_404(
-        event_id,
-        description="Event not found"
+    ev = get_object_or_404(
+        Event, id=event_id, description="Event not found"
     )
-
     user = get_current_user()
 
-    existing = Registration.query.filter_by(
-        user_id=user.id,
-        event_id=event_id
-    ).first()
-
+    # Check for existing registration
+    existing = Registration.objects(user=user, event=ev).first()
     if existing:
-        return jsonify({
-            "error": "You are already registered for this event"
-        }), 409
+        return jsonify({"error": "Already registered"}), 409
 
-    confirmed_count = Registration.query.filter_by(
-        event_id=event_id,
-        status="confirmed"
+    # Check capacity
+    confirmed = Registration.objects(
+        event=ev, status="confirmed"
     ).count()
-
-    if confirmed_count >= event.capacity:
+    if confirmed >= ev.capacity:
         return jsonify({
             "error": "Event is at full capacity"
         }), 400
 
-    if event.price > 0:
-        return jsonify({
-            "message": "This is a paid event. Use POST /payments/create-order to register.",
-            "event_id": event_id,
-            "price": event.price,
-        }), 200
-
-    reg = Registration(
-        user_id=user.id,
-        event_id=event_id,
-        status="confirmed"
-    )
-
-    db.session.add(reg)
-    db.session.commit()
+    # Free event → auto-confirm
+    reg = Registration(user=user, event=ev, status="confirmed")
+    reg.generate_qr_token()
+    reg.save()
 
     return jsonify({
         "message": "Registered successfully",
-        "registration": reg.to_dict()
+        "registration": reg.to_dict(),
     }), 201
 
 
+# ── GET /events/my-registrations ────────────────────────────────────────
 @events_bp.route("/my-registrations", methods=["GET"])
 @jwt_required()
 def my_registrations():
     """
-    My Registrations API
+    Get all event registrations for the current user.
     ---
-    tags:
-      - Events
-
-    security:
-      - Bearer: []
-
-    responses:
-      200:
-        description: User registrations returned
+    tags: [Events]
+    security: [{Bearer: []}]
     """
-
     user = get_current_user()
-
-    regs = Registration.query.filter_by(
-        user_id=user.id
-    ).all()
-
+    regs = Registration.objects(user=user).order_by("-registered_at")
     return jsonify({
         "registrations": [r.to_dict() for r in regs]
+    }), 200
+
+
+# ── GET /events/<id>/registrations ──────────────────────────────────────
+@events_bp.route("/<event_id>/registrations", methods=["GET"])
+@jwt_required()
+@role_required("organizer", "admin")
+def event_registrations(event_id):
+    """
+    Get all registrations for an event (organizer/admin only).
+    ---
+    tags: [Events]
+    security: [{Bearer: []}]
+    """
+    ev = get_object_or_404(
+        Event, id=event_id, description="Event not found"
+    )
+    regs = Registration.objects(event=ev).order_by("-registered_at")
+    return jsonify({
+        "total": regs.count(),
+        "registrations": [r.to_dict() for r in regs],
     }), 200

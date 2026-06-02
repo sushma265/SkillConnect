@@ -1,383 +1,269 @@
+"""
+SkillConnect – Admin Routes
+==============================
+Platform administration: user management, event oversight,
+organizer promotion, and platform-wide analytics.
+"""
+
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 
-from app import db
-from app.models import User, Course, Event, Payment
-from app.utils import role_required
+from app.models.user_model import User
+from app.models.event_model import Event
+from app.models.registration_model import Registration
+from app.models.question_model import Question
+from app.models.poll_model import PollVote
+from app.models.networking_model import NetworkingRequest
+from app.models.feedback_model import Feedback
+from app.utils.decorators import role_required
+from app.utils.jwt_utils import get_object_or_404
+from app.utils.analytics_utils import (
+    get_platform_analytics,
+    get_event_analytics,
+    get_participation_data,
+)
 
 admin_bp = Blueprint("admin", __name__)
 
 
+# ── GET /admin/users ────────────────────────────────────────────────────
 @admin_bp.route("/users", methods=["GET"])
 @jwt_required()
 @role_required("admin")
-def get_all_users():
+def get_users():
     """
-    Get All Users API
+    Get all users, optionally filtered by role.
     ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
+    tags: [Admin]
+    security: [{Bearer: []}]
+    parameters:
+      - in: query
+        name: role
+        type: string
+        enum: [attendee, organizer, admin]
     responses:
-      200:
-        description: List of users returned
-
-      401:
-        description: Unauthorized
-
-      403:
-        description: Admin access required
+      200: {description: User list}
     """
-
-    users = User.query.order_by(
-        User.created_at.desc()
-    ).all()
-
+    role = request.args.get("role")
+    qs = User.objects(role=role) if role else User.objects()
+    users = qs.order_by("-created_at")
     return jsonify({
-        "users": [u.to_dict() for u in users]
+        "total": users.count(),
+        "users": [u.to_dict() for u in users],
     }), 200
 
 
-@admin_bp.route("/users/<int:user_id>", methods=["GET"])
+# ── GET /admin/users/<user_id> ──────────────────────────────────────────
+@admin_bp.route("/users/<user_id>", methods=["GET"])
 @jwt_required()
 @role_required("admin")
 def get_user(user_id):
     """
-    Get Single User API
+    Get a user's full details (admin only).
     ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
-    parameters:
-      - name: user_id
-        in: path
-        type: integer
-        required: true
-
-    responses:
-      200:
-        description: User details returned
-
-      404:
-        description: User not found
+    tags: [Admin]
+    security: [{Bearer: []}]
     """
-
-    user = User.query.get_or_404(
-        user_id,
-        description="User not found"
+    user = get_object_or_404(
+        User, id=user_id, description="User not found"
     )
+    return jsonify({"user": user.to_dict()}), 200
 
+
+# ── PUT /admin/users/<user_id>/toggle-active ────────────────────────────
+@admin_bp.route("/users/<user_id>/toggle-active", methods=["PUT"])
+@jwt_required()
+@role_required("admin")
+def toggle_user_active(user_id):
+    """
+    Activate or deactivate a user account.
+    ---
+    tags: [Admin]
+    security: [{Bearer: []}]
+    """
+    user = get_object_or_404(
+        User, id=user_id, description="User not found"
+    )
+    user.is_active = not user.is_active
+    user.save()
+
+    status = "activated" if user.is_active else "deactivated"
     return jsonify({
-        "user": user.to_dict()
+        "message": f"User {status}",
+        "user": user.to_dict(),
     }), 200
 
 
-@admin_bp.route("/users/<int:user_id>", methods=["PUT"])
+# ── PUT /admin/promote-organizer ────────────────────────────────────────
+@admin_bp.route("/promote-organizer", methods=["PUT"])
 @jwt_required()
 @role_required("admin")
-def update_user(user_id):
+def promote_to_organizer():
     """
-    Update User API
+    Promote a user to organizer role.
     ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
+    tags: [Admin]
+    security: [{Bearer: []}]
     parameters:
-      - name: user_id
-        in: path
-        type: integer
-        required: true
-
       - in: body
         name: body
         required: true
-
         schema:
           type: object
-
+          required: [user_id]
           properties:
-            role:
-              type: string
-              example: conductor
-
-            is_active:
-              type: boolean
-              example: true
-
-            name:
-              type: string
-              example: John Doe
-
+            user_id: {type: string}
     responses:
-      200:
-        description: User updated successfully
-
-      400:
-        description: Invalid role
-
-      404:
-        description: User not found
+      200: {description: User promoted}
     """
-
-    user = User.query.get_or_404(
-        user_id,
-        description="User not found"
-    )
-
     data = request.get_json()
+    user_id = data.get("user_id")
 
-    if "role" in data:
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
 
-        if data["role"] not in (
-            "user",
-            "conductor",
-            "admin"
-        ):
-            return jsonify({
-                "error": "Invalid role"
-            }), 400
-
-        user.role = data["role"]
-
-    if "is_active" in data:
-        user.is_active = bool(data["is_active"])
-
-    if "name" in data:
-        user.name = data["name"]
-
-    db.session.commit()
-
-    return jsonify({
-        "message": "User updated",
-        "user": user.to_dict()
-    }), 200
-
-
-@admin_bp.route("/users/<int:user_id>", methods=["DELETE"])
-@jwt_required()
-@role_required("admin")
-def delete_user(user_id):
-    """
-    Delete User API
-    ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
-    parameters:
-      - name: user_id
-        in: path
-        type: integer
-        required: true
-
-    responses:
-      200:
-        description: User deleted successfully
-
-      404:
-        description: User not found
-    """
-
-    user = User.query.get_or_404(
-        user_id,
-        description="User not found"
+    user = get_object_or_404(
+        User, id=user_id, description="User not found"
     )
 
-    db.session.delete(user)
-    db.session.commit()
+    if user.role == "admin":
+        return jsonify({
+            "error": "Cannot change admin role"
+        }), 400
+
+    user.role = "organizer"
+    user.save()
 
     return jsonify({
-        "message": "User deleted"
+        "message": f"{user.name} promoted to organizer",
+        "user": user.to_dict(),
     }), 200
 
 
-@admin_bp.route("/courses", methods=["GET"])
+# ── PUT /admin/demote-user ─────────────────────────────────────────────
+@admin_bp.route("/demote-user", methods=["PUT"])
 @jwt_required()
 @role_required("admin")
-def admin_get_courses():
+def demote_to_attendee():
     """
-    Admin Get Courses API
+    Demote an organizer back to attendee.
     ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
-    responses:
-      200:
-        description: List of courses returned
-    """
-
-    courses = Course.query.order_by(
-        Course.created_at.desc()
-    ).all()
-
-    return jsonify({
-        "courses": [c.to_dict() for c in courses]
-    }), 200
-
-
-@admin_bp.route("/courses/<int:course_id>", methods=["DELETE"])
-@jwt_required()
-@role_required("admin")
-def admin_delete_course(course_id):
-    """
-    Admin Delete Course API
-    ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
+    tags: [Admin]
+    security: [{Bearer: []}]
     parameters:
-      - name: course_id
-        in: path
-        type: integer
+      - in: body
+        name: body
         required: true
-
+        schema:
+          type: object
+          required: [user_id]
+          properties:
+            user_id: {type: string}
     responses:
-      200:
-        description: Course deleted successfully
-
-      404:
-        description: Course not found
+      200: {description: User demoted}
     """
+    data = request.get_json()
+    user_id = data.get("user_id")
 
-    course = Course.query.get_or_404(
-        course_id,
-        description="Course not found"
+    if not user_id:
+        return jsonify({"error": "user_id is required"}), 400
+
+    user = get_object_or_404(
+        User, id=user_id, description="User not found"
     )
 
-    db.session.delete(course)
-    db.session.commit()
+    if user.role == "admin":
+        return jsonify({
+            "error": "Cannot change admin role"
+        }), 400
+
+    user.role = "attendee"
+    user.save()
 
     return jsonify({
-        "message": "Course deleted by admin"
+        "message": f"{user.name} demoted to attendee",
+        "user": user.to_dict(),
     }), 200
 
 
+# ── GET /admin/events ──────────────────────────────────────────────────
 @admin_bp.route("/events", methods=["GET"])
 @jwt_required()
 @role_required("admin")
-def admin_get_events():
+def admin_events():
     """
-    Admin Get Events API
+    Get all events (admin view).
     ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
-    responses:
-      200:
-        description: List of events returned
+    tags: [Admin]
+    security: [{Bearer: []}]
     """
-
-    events = Event.query.order_by(
-        Event.event_date.asc()
-    ).all()
-
+    events = Event.objects().order_by("-created_at")
     return jsonify({
-        "events": [e.to_dict() for e in events]
+        "total": events.count(),
+        "events": [e.to_dict() for e in events],
     }), 200
 
 
-@admin_bp.route("/events/<int:event_id>", methods=["DELETE"])
+# ── DELETE /admin/events/<event_id> ─────────────────────────────────────
+@admin_bp.route("/events/<event_id>", methods=["DELETE"])
 @jwt_required()
 @role_required("admin")
 def admin_delete_event(event_id):
     """
-    Admin Delete Event API
+    Force-delete an event (admin only).
     ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
-    parameters:
-      - name: event_id
-        in: path
-        type: integer
-        required: true
-
-    responses:
-      200:
-        description: Event deleted successfully
-
-      404:
-        description: Event not found
+    tags: [Admin]
+    security: [{Bearer: []}]
     """
-
-    event = Event.query.get_or_404(
-        event_id,
-        description="Event not found"
+    event = get_object_or_404(
+        Event, id=event_id, description="Event not found"
     )
-
-    db.session.delete(event)
-    db.session.commit()
-
-    return jsonify({
-        "message": "Event deleted by admin"
-    }), 200
+    # Cascade delete registrations
+    Registration.objects(event=event).delete()
+    event.delete()
+    return jsonify({"message": "Event deleted by admin"}), 200
 
 
-@admin_bp.route("/payments", methods=["GET"])
+# ── GET /admin/analytics ───────────────────────────────────────────────
+@admin_bp.route("/analytics", methods=["GET"])
 @jwt_required()
 @role_required("admin")
-def admin_get_payments():
+def admin_analytics():
     """
-    Admin Payment History API
+    Get platform-wide analytics (admin only).
     ---
-    tags:
-      - Admin
-
-    security:
-      - Bearer: []
-
-    parameters:
-      - name: status
-        in: query
-        type: string
-        required: false
-        example: paid
-
-    responses:
-      200:
-        description: Payment history returned
+    tags: [Admin]
+    security: [{Bearer: []}]
     """
+    return jsonify(get_platform_analytics()), 200
 
-    status = request.args.get("status")
 
-    query = Payment.query
-
-    if status:
-        query = query.filter_by(status=status)
-
-    payments = query.order_by(
-        Payment.created_at.desc()
-    ).all()
-
-    total = sum(
-        p.amount for p in payments
-        if p.status == "paid"
+# ── GET /admin/analytics/events/<event_id> ──────────────────────────────
+@admin_bp.route("/analytics/events/<event_id>", methods=["GET"])
+@jwt_required()
+@role_required("admin")
+def admin_event_analytics(event_id):
+    """
+    Get per-event analytics (admin only).
+    ---
+    tags: [Admin]
+    security: [{Bearer: []}]
+    """
+    event = get_object_or_404(
+        Event, id=event_id, description="Event not found"
     )
+    return jsonify(get_event_analytics(event)), 200
 
-    return jsonify({
-        "payments": [p.to_dict() for p in payments],
-        "total_revenue": total,
-    }), 200
+
+# ── GET /admin/analytics/participation ──────────────────────────────────
+@admin_bp.route("/analytics/participation", methods=["GET"])
+@jwt_required()
+@role_required("admin")
+def admin_participation():
+    """
+    Get participation rates across all events.
+    ---
+    tags: [Admin]
+    security: [{Bearer: []}]
+    """
+    return jsonify({"events": get_participation_data()}), 200

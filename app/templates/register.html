@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Register – SkillConnect{% endblock %}
+
+{% block content %}
+<section class="sc-auth-section">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-80">
+            <div class="col-lg-5 d-none d-lg-block">
+                <div class="sc-auth-left">
+                    <div class="sc-brand mb-4">
+                        <div class="sc-brand-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+                        <span class="fs-3">Skill<span class="sc-accent">Connect</span></span>
+                    </div>
+                    <h2>Start your journey.</h2>
+                    <p class="text-secondary">Join a thriving community of professionals and event enthusiasts.</p>
+                    <div class="sc-auth-features mt-4">
+                        <div class="sc-auth-feature"><i class="bi bi-check-circle-fill text-success me-2"></i>Free to get started</div>
+                        <div class="sc-auth-feature"><i class="bi bi-check-circle-fill text-success me-2"></i>Access all events</div>
+                        <div class="sc-auth-feature"><i class="bi bi-check-circle-fill text-success me-2"></i>Build connections</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5 col-md-8">
+                <div class="sc-auth-card">
+                    <h2 class="text-center mb-1">Create Account</h2>
+                    <p class="text-center text-secondary mb-4">Join SkillConnect today</p>
+
+                    <!-- Google OAuth -->
+                    <a href="/auth/google" class="btn btn-outline-light w-100 sc-btn-google mb-3">
+                        <svg width="18" height="18" viewBox="0 0 48 48" class="me-2">
+                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                        </svg>
+                        Sign up with Google
+                    </a>
+
+                    <div class="sc-divider"><span>or continue with email</span></div>
+
+                    <form id="registerForm" onsubmit="return handleRegister(event)">
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <div class="input-group">
+                                <span class="input-group-text sc-input-icon"><i class="bi bi-person"></i></span>
+                                <input type="text" class="form-control sc-input" id="regName" placeholder="Jane Doe" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text sc-input-icon"><i class="bi bi-envelope"></i></span>
+                                <input type="email" class="form-control sc-input" id="regEmail" placeholder="you@example.com" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text sc-input-icon"><i class="bi bi-lock"></i></span>
+                                <input type="password" class="form-control sc-input" id="regPassword" placeholder="Min 6 characters" required minlength="6">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">I am a…</label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="regRole" id="roleAttendee" value="attendee" checked>
+                                    <label class="btn btn-outline-primary w-100 sc-role-btn" for="roleAttendee">
+                                        <i class="bi bi-person-badge d-block mb-1" style="font-size:1.5rem"></i>
+                                        <span class="d-block fw-600">Attendee</span>
+                                        <small class="text-secondary">Browse & join events</small>
+                                    </label>
+                                </div>
+                                <div class="col-6">
+                                    <input type="radio" class="btn-check" name="regRole" id="roleOrganizer" value="organizer">
+                                    <label class="btn btn-outline-primary w-100 sc-role-btn" for="roleOrganizer">
+                                        <i class="bi bi-calendar-plus d-block mb-1" style="font-size:1.5rem"></i>
+                                        <span class="d-block fw-600">Organizer</span>
+                                        <small class="text-secondary">Create & manage events</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 sc-btn-primary" id="regBtn">
+                            Create Account <i class="bi bi-arrow-right ms-2"></i>
+                        </button>
+                    </form>
+
+                    <p class="text-center mt-3 small">
+                        Already have an account? <a href="/login" class="sc-link">Sign in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+async function handleRegister(e) {
+    e.preventDefault();
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating account...';
+
+    const role = document.querySelector('input[name="regRole"]:checked').value;
+
+    try {
+        const res = await fetch('/auth/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name: document.getElementById('regName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                role: role,
+            }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            localStorage.setItem('sc_token', data.access_token);
+            localStorage.setItem('sc_refresh_token', data.refresh_token || '');
+            localStorage.setItem('sc_user', JSON.stringify(data.user));
+            showToast('Account created successfully!', 'success');
+            setTimeout(() => window.location.href = '/dashboard', 500);
+        } else {
+            showToast(data.error || 'Registration failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error. Please try again.', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Create Account <i class="bi bi-arrow-right ms-2"></i>';
+    }
+    return false;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Analytics – SkillConnect{% endblock %}
+{% block extra_js_libs %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+
+{% block content %}
+<section class="py-5 mt-5">
+    <div class="container">
+        <h1 class="h3 mb-1">Analytics Dashboard</h1>
+        <p class="text-secondary mb-4">Platform performance metrics and insights</p>
+
+        <!-- Stats Row -->
+        <div class="row g-3 mb-4" id="analyticsStats">
+            <div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="sc-chart-card">
+                    <h6 class="mb-3">Event Fill Rates</h6>
+                    <canvas id="fillRateChart" height="250"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="sc-chart-card">
+                    <h6 class="mb-3">User Roles Distribution</h6>
+                    <canvas id="rolesChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="sc-chart-card">
+                    <h6 class="mb-3">Attendance Rates</h6>
+                    <canvas id="attendanceChart" height="250"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="sc-chart-card">
+                    <h6 class="mb-3">Engagement Overview</h6>
+                    <canvas id="engagementChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="/static/js/analytics.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', loadAnalytics);
+
+async function loadAnalytics() {
+    const token = localStorage.getItem('sc_token');
+    if (!token) { window.location.href = '/login'; return; }
+    const headers = {'Authorization': `Bearer ${token}`};
+
+    try {
+        const [dashRes, partRes] = await Promise.all([
+            fetch('/analytics/dashboard', {headers}),
+            fetch('/analytics/participation', {headers}),
+        ]);
+
+        if (!dashRes.ok) { showToast('Access denied', 'danger'); return; }
+
+        const analytics = await dashRes.json();
+        const partData = await partRes.json();
+
+        // Render stats
+        document.getElementById('analyticsStats').innerHTML = `
+            <div class="col-lg-2 col-md-4 col-6"><div class="sc-dash-stat text-center"><span class="sc-dash-stat-val">${analytics.users?.total || 0}</span><span class="sc-dash-stat-label">Total Users</span></div></div>
+            <div class="col-lg-2 col-md-4 col-6"><div class="sc-dash-stat text-center"><span class="sc-dash-stat-val">${analytics.events?.total || 0}</span><span class="sc-dash-stat-label">Total Events</span></div></div>
+            <div class="col-lg-2 col-md-4 col-6"><div class="sc-dash-stat text-center"><span class="sc-dash-stat-val">${analytics.registrations?.total || 0}</span><span class="sc-dash-stat-label">Registrations</span></div></div>
+            <div class="col-lg-2 col-md-4 col-6"><div class="sc-dash-stat text-center"><span class="sc-dash-stat-val">${analytics.registrations?.attendance_rate || 0}%</span><span class="sc-dash-stat-label">Attendance</span></div></div>
+            <div class="col-lg-2 col-md-4 col-6"><div class="sc-dash-stat text-center"><span class="sc-dash-stat-val">${analytics.polls?.total_votes || 0}</span><span class="sc-dash-stat-label">Poll Votes</span></div></div>
+            <div class="col-lg-2 col-md-4 col-6"><div class="sc-dash-stat text-center"><span class="sc-dash-stat-val">${analytics.feedback?.average_rating || '–'} ★</span><span class="sc-dash-stat-label">Avg Rating</span></div></div>
+        `;
+
+        // Charts
+        const events = partData.events || [];
+        const labels = events.map(e => e.event_title?.substring(0, 20) || 'Event');
+
+        // Fill Rate Chart
+        new Chart(document.getElementById('fillRateChart'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Fill Rate %',
+                    data: events.map(e => e.fill_rate || 0),
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } }
+        });
+
+        // Roles Chart
+        const roles = analytics.users?.by_role || {};
+        new Chart(document.getElementById('rolesChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Attendees', 'Organizers', 'Admins'],
+                datasets: [{
+                    data: [roles.attendee || 0, roles.organizer || 0, roles.admin || 0],
+                    backgroundColor: ['rgba(59,130,246,0.7)', 'rgba(99,102,241,0.7)', 'rgba(16,185,129,0.7)'],
+                    borderWidth: 0,
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
+        });
+
+        // Attendance Chart
+        new Chart(document.getElementById('attendanceChart'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Attendance Rate %',
+                    data: events.map(e => e.attendance_rate || 0),
+                    borderColor: 'rgba(16,185,129,1)',
+                    backgroundColor: 'rgba(16,185,129,0.1)',
+                    fill: true, tension: 0.4, pointRadius: 4,
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } }
+        });
+
+        // Engagement Chart
+        new Chart(document.getElementById('engagementChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Questions', 'Answered', 'Poll Votes', 'Connections', 'Feedback'],
+                datasets: [{
+                    label: 'Count',
+                    data: [
+                        analytics.qa?.total_questions || 0,
+                        analytics.qa?.answered || 0,
+                        analytics.polls?.total_votes || 0,
+                        analytics.networking?.total_connections || 0,
+                        analytics.feedback?.total || 0,
+                    ],
+                    backgroundColor: ['rgba(99,102,241,0.6)', 'rgba(16,185,129,0.6)', 'rgba(245,158,11,0.6)', 'rgba(59,130,246,0.6)', 'rgba(236,72,153,0.6)'],
+                    borderRadius: 6,
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.1)' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } }
+        });
+
+    } catch (err) {
+        document.getElementById('analyticsStats').innerHTML = '<div class="col-12"><p class="text-danger">Failed to load analytics. Ensure you have organizer or admin access.</p></div>';
+    }
+}
+</script>
+{% endblock %}
