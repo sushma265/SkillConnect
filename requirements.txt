@@ -1,12 +1,11 @@
-# SkillConnect – Python Dependencies
-# =====================================
-
 # Core Framework
 flask==3.0.3
 python-dotenv==1.0.1
+flask-cors==4.0.1
 
-# MongoDB ORM
-mongoengine==0.28.2
+# MongoDB
+mongoengine==0.29.1
+pymongo>=4.10
 
 # Authentication
 flask-jwt-extended==4.6.0
@@ -18,11 +17,8 @@ google-auth-oauthlib==1.2.0
 requests==2.31.0
 
 # QR Code Generation
-qrcode[pil]==7.4.2
-Pillow==10.3.0
+qrcode[pil]==8.2
+Pillow>=11.2.1
 
 # Production Server
 gunicorn==22.0.0
-
-# Utilities
-flask-cors==4.0.1
