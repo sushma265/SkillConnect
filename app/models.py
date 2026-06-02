@@ -13,7 +13,7 @@ def now_utc():
 # ══════════════════════════════════════════════════════════════════════════════
 class User(db.Model):
     __tablename__ = "users"
-
+    google_id = db.Column(db.String(128), unique=True, nullable=True)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
@@ -225,6 +225,7 @@ class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     # only one of the two foreign keys will be set
+
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=True)
     event_id = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=True)
 

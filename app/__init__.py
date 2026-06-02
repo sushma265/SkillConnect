@@ -3,11 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
-from flasgger import Swagger
 
 load_dotenv()
-
-
 
 db = SQLAlchemy()
 jwt = JWTManager()
@@ -15,7 +12,7 @@ jwt = JWTManager()
 
 def create_app():
     app = Flask(__name__)
-    Swagger(app)
+
     # ── Configuration ──────────────────────────────────────────────
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret")
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")

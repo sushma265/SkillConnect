@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════
    SkillConnect — app.js
    Single-page app: routing, API calls, rendering
-   Updated: Glassmorphism + dual theme support
+   Updated: Glassmorphism + dual theme + Google OAuth
 ═══════════════════════════════════════════════ */
 
 const BASE = '';
@@ -17,7 +17,6 @@ let currentRating = 0;
    THEME TOGGLE
 ───────────────────────────────────────────── */
 function initTheme() {
-  // Respect saved preference, default to dark
   const saved = localStorage.getItem('sc_theme') || 'dark';
   document.documentElement.dataset.theme = saved;
   updateThemeBtn(saved);
@@ -44,6 +43,8 @@ function updateThemeBtn(theme) {
 ───────────────────────────────────────────── */
 window.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  handleOAuthCallback();   // ← check for ?sc_token= or ?auth_error= on every load
+
   const screen = document.getElementById('loadingScreen');
   if (!screen) return;
   setTimeout(() => {
@@ -126,7 +127,61 @@ function showPage(name) {
 }
 
 /* ─────────────────────────────────────────────
-   AUTH
+   AUTH — GOOGLE OAUTH
+───────────────────────────────────────────── */
+
+// Step 1: redirect to Flask which redirects to Google
+function loginWithGoogle() {
+  window.location.href = '/auth/google';
+}
+
+// Step 2: runs on every page load — reads ?sc_token= or ?auth_error= from URL
+function handleOAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
+
+  // Error sent back by Flask callback
+  const authError = params.get('auth_error');
+  if (authError) {
+    const messages = {
+      state_mismatch:        'Security check failed. Please try again.',
+      token_exchange_failed: 'Could not connect to Google. Please try again.',
+      invalid_token:         'Google login failed — invalid token.',
+      no_email:              'Google did not share an email address.',
+      account_deactivated:   'Your account has been deactivated. Contact admin.',
+    };
+    toast(messages[authError] || `Google login error: ${authError}`, 'error');
+    window.history.replaceState({}, '', '/');
+    return;
+  }
+
+  // Success — Flask passes the JWT as ?sc_token=
+  const sc_token = params.get('sc_token');
+  if (!sc_token) return;  // normal load, nothing to do
+
+  token = sc_token;
+  localStorage.setItem('sc_token', token);
+  window.history.replaceState({}, '', '/');  // clean the token out of the URL
+  fetchOAuthUser();
+}
+
+// Step 3: fetch user profile using the new token
+async function fetchOAuthUser() {
+  try {
+    const data = await GET('/auth/me');
+    currentUser = data.user;
+    localStorage.setItem('sc_user', JSON.stringify(currentUser));
+    updateNavForUser();
+    toast(`Welcome, ${currentUser.name}! 👋`, 'success');
+    showPage('home');
+  } catch (e) {
+    token = null;
+    localStorage.removeItem('sc_token');
+    toast('Google login failed. Please try again.', 'error');
+  }
+}
+
+/* ─────────────────────────────────────────────
+   AUTH — EMAIL / PASSWORD
 ───────────────────────────────────────────── */
 function updateNavForUser() {
   const authEl = document.getElementById('navAuth');
@@ -276,7 +331,6 @@ function renderCourseCards(courses, gridId) {
         <button class="btn btn-ghost btn-sm" onclick="viewCourse(${c.id})">Details</button>
         <button class="btn btn-primary btn-sm" onclick="buyCourse(${c.id}, '${esc(c.title)}', ${c.price})">Enroll Now</button>
       </div>
-      <!-- Progress reveal on hover -->
       <div class="card-reveal"><div class="prog" style="width:${Math.floor(Math.random()*60+25)}%"></div></div>
     </div>`).join('');
 }
@@ -407,18 +461,11 @@ function renderEventCards(events, gridId) {
     const badgeIcon  = isWorkshop ? '🔧' : '🎯';
     const date = new Date(e.event_date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
     const pct  = Math.round((e.registered_count / e.capacity) * 100);
-    const barColor = pct > 80
-      ? 'var(--danger)'
-      : pct > 50
-        ? 'var(--warning)'
-        : 'var(--blue)';
-    // Days until event
+    const barColor = pct > 80 ? 'var(--danger)' : pct > 50 ? 'var(--warning)' : 'var(--blue)';
     const daysUntil = Math.ceil((new Date(e.event_date) - Date.now()) / 86400000);
     const countdownText = daysUntil > 0
       ? `${daysUntil} day${daysUntil !== 1 ? 's' : ''} to go`
-      : daysUntil === 0
-        ? 'Today!'
-        : 'Event passed';
+      : daysUntil === 0 ? 'Today!' : 'Event passed';
 
     return `
     <div class="card event-card" data-type="event">
@@ -441,7 +488,6 @@ function renderEventCards(events, gridId) {
           <div style="width:${pct}%;height:100%;background:${barColor};border-radius:2px;transition:width 0.6s ease;box-shadow:0 0 8px ${barColor}44"></div>
         </div>
       </div>
-      <!-- Countdown reveal on hover -->
       <div class="evt-reveal"><div class="pulse-dot"></div>${countdownText}</div>
       <div class="card-actions">
         <button class="btn btn-ghost btn-sm" onclick="viewEvent(${e.id})">Details</button>
@@ -739,11 +785,7 @@ async function loadAdminTab(tab, tabEl) {
   try {
     if (tab === 'users') {
       const data = await GET('/admin/users');
-      const roleColor = {
-        admin:     'var(--cyan)',
-        conductor: 'var(--blue)',
-        user:      'var(--indigo)'
-      };
+      const roleColor = { admin: 'var(--cyan)', conductor: 'var(--blue)', user: 'var(--indigo)' };
       content.innerHTML = `
         <div class="stats-row" style="margin-bottom:1.5rem">
           <div class="stat-card"><div class="num">${data.users.length}</div><div class="lbl">Total Users</div></div>
