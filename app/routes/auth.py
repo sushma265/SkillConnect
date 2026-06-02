@@ -17,7 +17,7 @@ auth_bp = Blueprint("auth", __name__)
 # ─── Google OAuth Config ──────────────────────────────────────────────────────
 GOOGLE_CLIENT_ID     = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI  = os.environ.get("GOOGLE_REDIRECT_URI", "http://localhost:5000/auth/google/callback")
+GOOGLE_REDIRECT_URI  = os.environ.get("GOOGLE_REDIRECT_URI", "https://skillconnect-12m0.onrender.com/auth/google/callback")
 
 # Scopes we request from Google
 SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email",
@@ -27,7 +27,7 @@ SCOPES = ["openid", "https://www.googleapis.com/auth/userinfo.email",
 def make_flow():
     """Create a fresh OAuth flow object per request."""
     return Flow.from_client_config(
-        {
+        {GOOGLE_REDIRECT_URI  
             "web": {
                 "client_id":     GOOGLE_CLIENT_ID,
                 "client_secret": GOOGLE_CLIENT_SECRET,
