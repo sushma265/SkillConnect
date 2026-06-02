@@ -43,6 +43,8 @@ A Flask-based Skill Development & Event Management Platform where users can enro
 * SQLite
 * Razorpay Payment Gateway
 * Python Dotenv
+* Docker
+* Docker Compose
 
 ---
 
@@ -68,6 +70,8 @@ skillconnect/
 ├── instance/
 │   └── skillconnect.db
 │
+├── Dockerfile
+├── docker-compose.yml
 ├── run.py
 ├── seed.py
 ├── requirements.txt
@@ -94,13 +98,13 @@ python -m venv venv
 
 ### Activate Virtual Environment
 
-**Windows**
+#### Windows
 
 ```bash
 venv\Scripts\activate
 ```
 
-**Linux / Mac**
+#### Linux / Mac
 
 ```bash
 source venv/bin/activate
@@ -144,10 +148,117 @@ python seed.py
 python run.py
 ```
 
-Server will start on:
+Server starts at:
 
 ```text
 http://127.0.0.1:5000
+```
+
+---
+
+# 🐳 Docker Development
+
+Run the application without installing Python dependencies locally.
+
+## Dockerfile
+
+Create a file named `Dockerfile`
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["python", "run.py"]
+```
+
+## docker-compose.yml
+
+Create a file named `docker-compose.yml`
+
+```yaml
+version: "3.9"
+
+services:
+  skillconnect:
+    build: .
+    container_name: skillconnect_app
+
+    ports:
+      - "5000:5000"
+
+    env_file:
+      - .env
+
+    volumes:
+      - .:/app
+      - ./instance:/app/instance
+
+    restart: unless-stopped
+```
+
+---
+
+## Build Docker Image
+
+```bash
+docker build -t skillconnect .
+```
+
+---
+
+## Run Docker Container
+
+```bash
+docker run -p 5000:5000 --env-file .env skillconnect
+```
+
+---
+
+## Run Using Docker Compose
+
+```bash
+docker-compose up --build
+```
+
+---
+
+## Run in Background
+
+```bash
+docker-compose up -d
+```
+
+---
+
+## Stop Containers
+
+```bash
+docker-compose down
+```
+
+---
+
+## View Logs
+
+```bash
+docker-compose logs -f
+```
+
+---
+
+## Access Application
+
+```text
+http://localhost:5000
 ```
 
 ---
@@ -241,6 +352,9 @@ Authorization: Bearer <access_token>
 * Real-Time Chat
 * Event Analytics Dashboard
 * AI Course Recommendations
+* Docker Deployment on Cloud
+* Kubernetes Support
+* CI/CD Pipeline using GitHub Actions
 
 ---
 

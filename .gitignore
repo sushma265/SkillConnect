@@ -1,73 +1,69 @@
 # Python
-
-**pycache**/
+__pycache__/
 *.py[cod]
 *$py.class
 
 # Virtual Environment
-
 venv/
-.env/
+env/
 ENV/
-.venv/
 
 # Environment Variables
-
 .env
 
 # Flask
-
 instance/
-.webassets-cache
-
-# Database
-
 *.db
 *.sqlite3
 
-# Logs
-
-*.log
-
 # VS Code
-
 .vscode/
 
 # PyCharm
-
 .idea/
 
-# macOS
+# Jupyter Notebook
+.ipynb_checkpoints/
 
-.DS_Store
+# Logs
+*.log
 
-# Windows
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
 
-Thumbs.db
-desktop.ini
-
-# Build Files
-
+# Build files
 build/
 dist/
 *.egg-info/
 
-# Coverage
+# OS Files
+.DS_Store
+Thumbs.db
 
-.coverage
-htmlcov/
-.pytest_cache/
+# Docker
+docker-compose.override.yml
 
-# Render
+# Cache
+.cache/
 
-.render/
-
-# Node Modules (if frontend assets exist)
-
-node_modules/
-
-# Temporary Files
-
+# Temporary files
 *.tmp
+*.temp
+
+# Secrets
+secrets.json
+credentials.json
+
+# Uploaded Files
+uploads/
+media/
+
+# Node.js (if frontend added later)
+node_modules/
+npm-debug.log*
+
+# Generated files
 *.bak
 *.swp
