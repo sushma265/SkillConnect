@@ -45,11 +45,19 @@ def create_app(config_name: str = None):
 
     app.config.from_object(cfg)
 
-    # ── MongoDB connection ──────────────────────────────────────────────
-    connect(host=app.config.get(
+    # ── MongoDB connection (with connection pooling) ─────────────────────
+    mongo_uri = app.config.get(
         "MONGODB_URI",
         os.getenv("MONGODB_URI", "mongodb://localhost:27017/skillconnect"),
-    ))
+    )
+    connect(
+        host=mongo_uri,
+        maxPoolSize=20,          # max simultaneous connections
+        minPoolSize=2,           # keep 2 warm connections alive
+        serverSelectionTimeoutMS=3000,   # fail fast if MongoDB is down
+        connectTimeoutMS=3000,
+        socketTimeoutMS=10000,
+    )
 
     # ── Initialise extensions ───────────────────────────────────────────
     jwt.init_app(app)

@@ -21,6 +21,16 @@
 </head>
 <body>
 
+<!-- ═══════════ PAGE LOADER ═══════════ -->
+<div id="scPageLoader">
+    <div class="sc-loader-inner">
+        <div class="sc-loader-logo">
+            <i class="bi bi-lightning-charge-fill"></i>
+        </div>
+        <div class="sc-loader-bar"><div class="sc-loader-fill"></div></div>
+    </div>
+</div>
+
 <!-- ═══════════ NAVBAR ═══════════ -->
 <nav class="navbar navbar-expand-lg navbar-dark sc-navbar fixed-top" id="mainNavbar">
     <div class="container">
@@ -129,7 +139,6 @@
     </div>
 </footer>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Chart.js (loaded on analytics pages) -->
@@ -140,5 +149,36 @@
 <script src="/static/js/auth.js"></script>
 {% block extra_js %}{% endblock %}
 
+<!-- Page Loader Control -->
+<script>
+(function() {
+    // Hide loader once DOM + CSS are painted
+    function hideLoader() {
+        var loader = document.getElementById('scPageLoader');
+        if (!loader) return;
+        loader.classList.add('sc-loader-done');
+        setTimeout(function() { loader.style.display = 'none'; }, 500);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hideLoader);
+    } else {
+        hideLoader();
+    }
+    // Show loader on page navigation
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        // Only show for same-origin page nav (not #anchors, js:, external)
+        if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+            href.startsWith('http') || href.startsWith('mailto') || e.ctrlKey || e.metaKey) return;
+        var loader = document.getElementById('scPageLoader');
+        if (loader) {
+            loader.style.display = 'flex';
+            loader.classList.remove('sc-loader-done');
+        }
+    });
+})();
+</script>
 </body>
 </html>

@@ -85,8 +85,8 @@ def register():
         if not data.get(field):
             return jsonify({"error": f"{field} is required"}), 400
 
-    # Check for existing email
-    if User.objects(email=data["email"]).first():
+    # Check for existing email (only fetch the id – fastest possible check)
+    if User.objects(email=data["email"]).only("id").first():
         return jsonify({"error": "Email already registered"}), 409
 
     # Validate role
@@ -145,7 +145,11 @@ def login():
             "error": "Email and password are required"
         }), 400
 
-    user = User.objects(email=data["email"]).first()
+    user = User.objects(email=data["email"]).only(
+        "id", "email", "password_hash", "role", "name", "is_active",
+        "avatar_url", "bio", "company", "job_title", "linkedin_url",
+        "created_at",
+    ).first()
     if not user or not user.check_password(data["password"]):
         return jsonify({"error": "Invalid email or password"}), 401
 

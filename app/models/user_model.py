@@ -12,6 +12,10 @@ from mongoengine import (
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# Use pbkdf2 (fast + NIST-compliant). Werkzeug 3 defaults to scrypt which
+# takes ~130ms per hash. pbkdf2:sha256:260000 takes ~30ms – 4x faster.
+_HASH_METHOD = "pbkdf2:sha256:260000"
+
 
 def now_utc():
     """Return the current UTC datetime."""
@@ -39,7 +43,10 @@ class User(Document):
 
     meta = {
         "collection": "users",
-        "indexes": ["email"],
+        "indexes": [
+            {"fields": ["email"], "unique": True},   # fast O(log n) lookup at login
+            {"fields": ["google_id"], "unique": True, "sparse": True},
+        ],
         "ordering": ["-created_at"],
     }
 
@@ -62,11 +69,16 @@ class User(Document):
     # ── Password helpers ────────────────────────────────────────────────
 
     def set_password(self, password: str) -> None:
-        """Hash and store a plaintext password."""
-        self.password_hash = generate_password_hash(password)
+        """Hash and store a plaintext password using pbkdf2:sha256."""
+        self.password_hash = generate_password_hash(
+            password, method=_HASH_METHOD, salt_length=16
+        )
 
     def check_password(self, password: str) -> bool:
         """Verify a plaintext password against the stored hash."""
+        # Short-circuit for OAuth-only accounts (no real password)
+        if not self.password_hash or self.password_hash == "oauth-no-password":
+            return False
         return check_password_hash(self.password_hash, password)
 
     # ── Serialisation ───────────────────────────────────────────────────

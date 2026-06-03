@@ -68,6 +68,12 @@
 </section>
 
 <script>
+// Warm up the server connection pool as soon as the page loads,
+// so the MongoDB connection is already open when the user submits.
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/health').catch(() => {});
+});
+
 async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById('loginBtn');
@@ -89,7 +95,7 @@ async function handleLogin(e) {
             localStorage.setItem('sc_refresh_token', data.refresh_token || '');
             localStorage.setItem('sc_user', JSON.stringify(data.user));
             showToast('Login successful!', 'success');
-            setTimeout(() => window.location.href = '/dashboard', 500);
+            setTimeout(() => window.location.href = '/dashboard', 400);
         } else {
             showToast(data.error || 'Login failed', 'danger');
         }

@@ -96,6 +96,11 @@
 </section>
 
 <script>
+// Warm up the server connection pool as soon as the page loads.
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/health').catch(() => {});
+});
+
 async function handleRegister(e) {
     e.preventDefault();
     const btn = document.getElementById('regBtn');
@@ -121,7 +126,7 @@ async function handleRegister(e) {
             localStorage.setItem('sc_refresh_token', data.refresh_token || '');
             localStorage.setItem('sc_user', JSON.stringify(data.user));
             showToast('Account created successfully!', 'success');
-            setTimeout(() => window.location.href = '/dashboard', 500);
+            setTimeout(() => window.location.href = '/dashboard', 400);
         } else {
             showToast(data.error || 'Registration failed', 'danger');
         }
