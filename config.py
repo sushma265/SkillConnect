@@ -47,6 +47,7 @@ class Config:
     GOOGLE_REDIRECT_URI = os.getenv(
         "GOOGLE_REDIRECT_URI",
         "http://localhost:5000/auth/google/callback",
+        "https://skillconnect-12m0.onrender.com/auth/google/callback",
     )
 
     # ── Frontend URL (used for OAuth redirect after login) ──────────────
