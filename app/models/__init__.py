@@ -17,6 +17,7 @@ from app.models.question_model import Question
 from app.models.feedback_model import Feedback
 from app.models.announcement_model import Announcement
 from app.models.material_model import SessionMaterial
+from app.models.certificate_model import Certificate
 
 __all__ = [
     "User",
@@ -31,4 +32,5 @@ __all__ = [
     "Feedback",
     "Announcement",
     "SessionMaterial",
+    "Certificate",
 ]

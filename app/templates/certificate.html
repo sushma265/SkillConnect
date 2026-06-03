@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+{% block title %}Certificate – SkillConnect{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Certificate Page ──────────────────────────────────────── */
+.cert-page {
+    min-height: 100vh;
+    padding: 3rem 1rem 5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 20% 30%, rgba(59,130,246,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 70%, rgba(6,182,212,0.07) 0%, transparent 60%);
+}
+
+.cert-wrapper {
+    width: 100%;
+    max-width: 860px;
+    position: relative;
+}
+
+/* The certificate card itself */
+.cert-card {
+    position: relative;
+    background: #fff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.45);
+    padding: 0;
+}
+
+/* Top gradient bar */
+.cert-header-bar {
+    background: linear-gradient(135deg, #1e3a8a, #0ea5e9, #06b6d4);
+    height: 10px;
+    width: 100%;
+}
+
+/* Inner content */
+.cert-inner {
+    padding: 3rem 4rem;
+    position: relative;
+    text-align: center;
+}
+
+/* Watermark */
+.cert-watermark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0.03;
+    font-size: 14rem;
+    color: #1e3a8a;
+    font-weight: 900;
+    transform: rotate(-30deg);
+    user-select: none;
+}
+
+/* Corner ornaments */
+.cert-corner {
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    opacity: 0.12;
+}
+.cert-corner-tl { top: 12px; left: 12px; border-top: 3px solid #1e3a8a; border-left: 3px solid #1e3a8a; border-radius: 8px 0 0 0; }
+.cert-corner-tr { top: 12px; right: 12px; border-top: 3px solid #1e3a8a; border-right: 3px solid #1e3a8a; border-radius: 0 8px 0 0; }
+.cert-corner-bl { bottom: 12px; left: 12px; border-bottom: 3px solid #1e3a8a; border-left: 3px solid #1e3a8a; border-radius: 0 0 0 8px; }
+.cert-corner-br { bottom: 12px; right: 12px; border-bottom: 3px solid #1e3a8a; border-right: 3px solid #1e3a8a; border-radius: 0 0 8px 0; }
+
+/* Logo row */
+.cert-logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+}
+
+.cert-logo-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: #fff;
+}
+
+.cert-logo-text {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.02em;
+}
+
+.cert-logo-text span { color: #0ea5e9; }
+
+/* Eyebrow */
+.cert-eyebrow {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: #64748b;
+    margin-bottom: 0.4rem;
+}
+
+/* Title */
+.cert-title {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #1e3a8a, #0ea5e9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Divider */
+.cert-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+    margin: 1.25rem 0;
+}
+
+/* Presented to */
+.cert-to-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.3rem;
+}
+
+.cert-recipient {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #0f172a;
+    font-family: 'Georgia', serif;
+    margin-bottom: 0.5rem;
+}
+
+.cert-for-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 0.3rem;
+}
+
+.cert-event-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1.25rem;
+}
+
+/* Info row */
+.cert-info-row {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.cert-info-item {
+    text-align: center;
+}
+
+.cert-info-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 0.15rem;
+}
+
+.cert-info-val {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+/* Bottom seal area */
+.cert-seal-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.cert-signature {
+    text-align: center;
+    min-width: 160px;
+}
+
+.cert-signature-line {
+    height: 2px;
+    background: #cbd5e1;
+    margin-bottom: 0.4rem;
+    border-radius: 1px;
+}
+
+.cert-signature-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.cert-signature-role {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+
+.cert-badge-seal {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1e3a8a, #0ea5e9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(14,165,233,0.35);
+}
+
+.cert-badge-seal i { font-size: 1.4rem; margin-bottom: 2px; }
+
+/* Bottom gradient bar */
+.cert-footer-bar {
+    background: linear-gradient(135deg, #1e3a8a, #0ea5e9, #06b6d4);
+    height: 6px;
+}
+
+/* Verify ribbon below card */
+.cert-verify-ribbon {
+    margin-top: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1.5rem;
+    background: rgba(16,185,129,0.1);
+    border: 1px solid rgba(16,185,129,0.25);
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #34d399;
+}
+
+/* Actions row */
+.cert-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.cert-btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.4rem;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-decoration: none;
+}
+
+.cert-btn-download:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(59,130,246,0.4);
+    color: #fff;
+}
+
+.cert-btn-share {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.4rem;
+    background: rgba(255,255,255,0.06);
+    color: var(--sc-text);
+    border: 1px solid var(--sc-border);
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.cert-btn-share:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+/* Error / loading states */
+.cert-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+@media print {
+    .sc-navbar, .sc-footer, .cert-actions, .cert-verify-ribbon, #scChatToggle, #scChatPanel { display: none !important; }
+    .cert-page { padding: 0; }
+    .cert-card { box-shadow: none; }
+    body { background: white; }
+}
+
+@media (max-width: 600px) {
+    .cert-inner { padding: 2rem 1.5rem; }
+    .cert-title { font-size: 1.6rem; }
+    .cert-recipient { font-size: 1.5rem; }
+    .cert-seal-row { flex-direction: column; gap: 1rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cert-page" id="certPage">
+
+    <!-- Loading state -->
+    <div class="cert-state" id="certLoading">
+        <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem"></div>
+        <p class="text-secondary">Verifying certificate…</p>
+    </div>
+
+    <!-- Error state (hidden by default) -->
+    <div class="cert-state d-none" id="certError">
+        <i class="bi bi-shield-x" style="font-size:4rem;color:var(--sc-danger)"></i>
+        <h3 class="mt-3">Certificate Not Found</h3>
+        <p class="text-secondary">This certificate ID is invalid or has been revoked.</p>
+        <a href="/" class="btn btn-outline-primary mt-2">Go Home</a>
+    </div>
+
+    <!-- Certificate (hidden until loaded) -->
+    <div class="cert-wrapper d-none" id="certContent">
+
+        <div class="cert-card" id="certCard">
+            <!-- Top bar -->
+            <div class="cert-header-bar"></div>
+
+            <div class="cert-inner" id="certInner">
+                <!-- Watermark -->
+                <div class="cert-watermark"><i class="bi bi-lightning-charge-fill"></i></div>
+
+                <!-- Corner ornaments -->
+                <div class="cert-corner cert-corner-tl"></div>
+                <div class="cert-corner cert-corner-tr"></div>
+                <div class="cert-corner cert-corner-bl"></div>
+                <div class="cert-corner cert-corner-br"></div>
+
+                <!-- Logo -->
+                <div class="cert-logo-row">
+                    <div class="cert-logo-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+                    <span class="cert-logo-text">Skill<span>Connect</span></span>
+                </div>
+
+                <div class="cert-eyebrow">Certificate of Completion</div>
+                <div class="cert-title">Achievement Award</div>
+
+                <div class="cert-divider"></div>
+
+                <div class="cert-to-label">This certifies that</div>
+                <div class="cert-recipient" id="certRecipient">—</div>
+                <div class="cert-for-label">has successfully completed</div>
+                <div class="cert-event-name" id="certEventName">—</div>
+
+                <div class="cert-info-row">
+                    <div class="cert-info-item">
+                        <span class="cert-info-label">Date</span>
+                        <span class="cert-info-val" id="certDate">—</span>
+                    </div>
+                    <div class="cert-info-item">
+                        <span class="cert-info-label">Certificate ID</span>
+                        <span class="cert-info-val" id="certId" style="font-size:0.75rem;font-family:monospace">—</span>
+                    </div>
+                </div>
+
+                <div class="cert-divider"></div>
+
+                <!-- Seal & Signature row -->
+                <div class="cert-seal-row">
+                    <div class="cert-signature">
+                        <div class="cert-signature-line"></div>
+                        <div class="cert-signature-name" id="certOrganizer">—</div>
+                        <div class="cert-signature-role">Event Organizer</div>
+                    </div>
+
+                    <div class="cert-badge-seal">
+                        <i class="bi bi-patch-check-fill"></i>
+                        <span>Verified</span>
+                    </div>
+
+                    <div class="cert-signature">
+                        <div class="cert-signature-line"></div>
+                        <div class="cert-signature-name">SkillConnect</div>
+                        <div class="cert-signature-role">Platform Authority</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom bar -->
+            <div class="cert-footer-bar"></div>
+        </div><!-- /cert-card -->
+
+        <!-- Verified ribbon -->
+        <div class="cert-verify-ribbon">
+            <i class="bi bi-shield-check"></i>
+            <span>This certificate is authentic and verified by SkillConnect</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="cert-actions">
+            <button class="cert-btn-download" onclick="downloadCert()">
+                <i class="bi bi-download"></i> Download PDF
+            </button>
+            <button class="cert-btn-share" onclick="shareCert()">
+                <i class="bi bi-share"></i> Copy Link
+            </button>
+            <a href="/dashboard" class="cert-btn-share" style="text-decoration:none">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </a>
+        </div>
+
+    </div><!-- /cert-wrapper -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CERT_UUID = "{{ cert_uuid }}";
+
+async function loadCertificate() {
+    try {
+        const res = await fetch(`/certificates/${CERT_UUID}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.certificate) {
+            showError();
+            return;
+        }
+
+        const c = data.certificate;
+
+        // Populate fields
+        document.getElementById('certRecipient').textContent = c.recipient_name || '—';
+        document.getElementById('certEventName').textContent = c.event_title || '—';
+        document.getElementById('certOrganizer').textContent = c.organizer_name || '—';
+        document.getElementById('certDate').textContent = c.event_date || (c.issued_at ? new Date(c.issued_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '—');
+        document.getElementById('certId').textContent = c.certificate_id ? c.certificate_id.substring(0, 8).toUpperCase() + '…' : '—';
+
+        document.title = `Certificate – ${c.recipient_name} | SkillConnect`;
+
+        // Show certificate
+        document.getElementById('certLoading').classList.add('d-none');
+        document.getElementById('certContent').classList.remove('d-none');
+
+    } catch (err) {
+        console.error(err);
+        showError();
+    }
+}
+
+function showError() {
+    document.getElementById('certLoading').classList.add('d-none');
+    document.getElementById('certError').classList.remove('d-none');
+}
+
+function downloadCert() {
+    window.print();
+}
+
+function shareCert() {
+    const url = window.location.href;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('Certificate link copied!', 'success');
+        });
+    } else {
+        const el = document.createElement('textarea');
+        el.value = url;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        el.remove();
+        showToast('Link copied!', 'success');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadCertificate);
+</script>
+{% endblock %}

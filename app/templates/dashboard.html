@@ -40,6 +40,12 @@
                     <div><span class="sc-dash-stat-val" id="statFeedback">–</span><span class="sc-dash-stat-label">Feedback Given</span></div>
                 </div>
             </div>
+            <div class="col-lg-3 col-md-6" id="statCertCol">
+                <div class="sc-dash-stat">
+                    <div class="sc-dash-stat-icon" style="background:rgba(99,102,241,0.15)"><i class="bi bi-award" style="color:#a78bfa"></i></div>
+                    <div><span class="sc-dash-stat-val" id="statCerts">–</span><span class="sc-dash-stat-label">Certificates</span></div>
+                </div>
+            </div>
         </div>
 
         <!-- Dashboard Tabs -->
@@ -48,6 +54,7 @@
             <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabConnections"><i class="bi bi-people me-1"></i>Connections</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabNetworking"><i class="bi bi-send me-1"></i>Networking</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabAnnouncements"><i class="bi bi-megaphone me-1"></i>Announcements</button></li>
+            <li class="nav-item" id="tabCertsLi"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabCertificates"><i class="bi bi-award me-1"></i>Certificates</button></li>
             <li class="nav-item d-none" id="tabMyEventsLi"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tabMyEvents"><i class="bi bi-calendar-check me-1"></i>My Events &amp; Sessions</button></li>
         </ul>
 
@@ -89,6 +96,13 @@
             <div class="tab-pane fade" id="tabMyEvents">
                 <div id="myEventsList">
                     <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+                </div>
+            </div>
+
+            <!-- Certificates Tab -->
+            <div class="tab-pane fade" id="tabCertificates">
+                <div id="certificatesList" class="row g-3">
+                    <div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>
                 </div>
             </div>
         </div>
@@ -331,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     loadDashData();
+    loadCertificates();
 
     // Auto-open create event modal if redirected with ?action=create-event
     const params = new URLSearchParams(window.location.search);
@@ -670,9 +685,12 @@ async function loadMyEvents() {
                         <h5 class="mb-1">${ev.title}</h5>
                         <small class="text-secondary">${new Date(ev.event_date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} &middot; ${ev.registered_count||0}/${ev.capacity} registered</small>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
                         <button class="btn btn-outline-primary btn-sm" onclick="openCreateSession('${ev.id}')">
                             <i class="bi bi-plus me-1"></i>Add Session
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" id="certBtn_${ev.id}" onclick="issueCertificates('${ev.id}','${safeTitle}')" title="Issue Certificates">
+                            <i class="bi bi-award me-1"></i>Issue Certs
                         </button>
                         <button class="btn btn-outline-danger btn-sm" onclick="confirmDeleteEvent('${ev.id}','${safeTitle}')" title="Delete Event">
                             <i class="bi bi-trash"></i>
@@ -699,6 +717,92 @@ async function loadMyEvents() {
         }
         container.innerHTML = html;
     } catch(e) { document.getElementById('myEventsList').innerHTML = '<p class="text-danger">Failed to load events.</p>'; }
+}
+
+// ── Issue Certificates for Event ───────────────────────────────────────
+async function issueCertificates(eventId, eventTitle) {
+    const token = localStorage.getItem('sc_token');
+    const btn = document.getElementById(`certBtn_${eventId}`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Issuing…'; }
+
+    try {
+        const res = await fetch(`/certificates/issue/${eventId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(`✅ ${data.message}`, 'success');
+        } else {
+            showToast(data.error || 'Failed to issue certificates', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error. Please try again.', 'danger');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-award me-1"></i>Issue Certs'; }
+    }
+}
+
+// ── Load Certificates (Attendee) ────────────────────────────────────────
+async function loadCertificates() {
+    const token = localStorage.getItem('sc_token');
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const list = document.getElementById('certificatesList');
+    try {
+        const res = await fetch('/certificates/my', { headers });
+        const data = await res.json();
+        const certs = data.certificates || [];
+
+        document.getElementById('statCerts').textContent = certs.length;
+
+        if (!certs.length) {
+            list.innerHTML = `
+                <div class="col-12">
+                    <div class="sc-empty-state">
+                        <i class="bi bi-award" style="color:var(--sc-primary)"></i>
+                        <p class="mt-2">No certificates yet. Complete an event to earn one!</p>
+                        <a href="/browse-events" class="btn btn-outline-primary btn-sm">Browse Events</a>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        list.innerHTML = certs.map(c => `
+            <div class="col-lg-6">
+                <div class="sc-reg-card" style="border-color:rgba(99,102,241,0.25);background:linear-gradient(135deg,rgba(99,102,241,0.05),rgba(6,182,212,0.05))">
+                    <div class="d-flex align-items-start gap-3">
+                        <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#3b82f6,#06b6d4);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                            <i class="bi bi-award-fill" style="font-size:1.5rem;color:#fff"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1" style="color:#e2e8f0">${c.event_title}</h6>
+                            <small class="text-secondary d-block">Issued by ${c.organizer_name}</small>
+                            <small class="text-secondary d-block">Date: ${c.event_date || new Date(c.issued_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}</small>
+                        </div>
+                    </div>
+                    <div class="mt-3 d-flex gap-2">
+                        <a href="/certificate/${c.certificate_id}" target="_blank" class="btn btn-primary btn-sm sc-btn-primary">
+                            <i class="bi bi-eye me-1"></i>View Certificate
+                        </a>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="copyLink('/certificate/${c.certificate_id}')">
+                            <i class="bi bi-share me-1"></i>Share
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) {
+        list.innerHTML = '<div class="col-12"><p class="text-danger">Failed to load certificates.</p></div>';
+    }
+}
+
+function copyLink(path) {
+    const url = window.location.origin + path;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => showToast('Link copied!', 'success'));
+    } else {
+        showToast('Copy: ' + url, 'info');
+    }
 }
 
 // ── Confirm + Delete Event ─────────────────────────────────────────────

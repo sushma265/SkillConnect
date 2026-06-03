@@ -75,6 +75,8 @@ def create_app(config_name: str = None):
     from app.routes.materials import materials_bp
     from app.routes.analytics import analytics_bp
     from app.routes.admin import admin_bp
+    from app.routes.chat import chat_bp
+    from app.routes.certificates import certificates_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(users_bp, url_prefix="/users")
@@ -88,6 +90,8 @@ def create_app(config_name: str = None):
     app.register_blueprint(materials_bp, url_prefix="/materials")
     app.register_blueprint(analytics_bp, url_prefix="/analytics")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(chat_bp, url_prefix="/chat")
+    app.register_blueprint(certificates_bp, url_prefix="/certificates")
 
     # ── Front-end routes ────────────────────────────────────────────────
     @app.route("/")
@@ -134,6 +138,11 @@ def create_app(config_name: str = None):
     def admin_page():
         """Serve the admin panel page."""
         return render_template("admin.html")
+
+    @app.route("/certificate/<cert_uuid>")
+    def certificate_page(cert_uuid):
+        """Serve the public certificate verification page."""
+        return render_template("certificate.html", cert_uuid=cert_uuid)
 
     # ── Health check ────────────────────────────────────────────────────
     @app.route("/health")
