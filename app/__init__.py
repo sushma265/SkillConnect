@@ -64,12 +64,12 @@ def create_app(config_name: str = None):
     # ── Initialise extensions ───────────────────────────────────────────
     jwt.init_app(app)
     socketio.init_app(
-        app,
-        cors_allowed_origins="*",
-        async_mode="eventlet",
-        logger=False,
-        engineio_logger=False,
-    )
+    app,
+    cors_allowed_origins="*",
+    async_mode="threading",
+    logger=False,
+    engineio_logger=False
+)
 
     # ── Register blueprints ─────────────────────────────────────────────
     from app.routes.auth import auth_bp
