@@ -280,4 +280,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ---
 
-<p align="center">Made with ❤️ · <a href="https://skillconnect-12m0.onrender.com/">Try SkillConnect Live</a></p>
+<p align="center"><a href="https://skillconnect-12m0.onrender.com/">Try SkillConnect Live</a></p>
