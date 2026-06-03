@@ -298,3 +298,38 @@ def event_registrations(event_id):
         "total": regs.count(),
         "registrations": [r.to_dict() for r in regs],
     }), 200
+
+
+# ── DELETE /events/<id> ─────────────────────────────────────────────────
+@events_bp.route("/<event_id>", methods=["DELETE"])
+@jwt_required()
+def delete_event(event_id):
+    """
+    Delete an event (creator or admin only).
+    Also removes all registrations linked to this event.
+    ---
+    tags: [Events]
+    security: [{Bearer: []}]
+    responses:
+      200: {description: Event deleted}
+      403: {description: Not authorised}
+      404: {description: Event not found}
+    """
+    user = get_current_user()
+    ev = get_object_or_404(Event, id=event_id, description="Event not found")
+
+    # Only the creator or an admin may delete
+    if str(ev.created_by.id) != str(user.id) and user.role != "admin":
+        return jsonify({"error": "You are not authorised to delete this event"}), 403
+
+    # Cascade-delete all registrations for this event
+    deleted_regs = Registration.objects(event=ev).count()
+    Registration.objects(event=ev).delete()
+
+    title = ev.title
+    ev.delete()
+
+    return jsonify({
+        "message": f'Event "{title}" deleted successfully',
+        "registrations_removed": deleted_regs,
+    }), 200
