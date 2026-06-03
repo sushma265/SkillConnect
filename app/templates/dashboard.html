@@ -679,19 +679,23 @@ async function loadMyEvents() {
             const sessData = await sessRes.json();
             const sessions = sessData.sessions || [];
             const safeTitle = ev.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-            html += `<div class="sc-sidebar-card mb-4" id="evCard_${ev.id}">
+            html += `<div class="sc-sidebar-card mb-4" id="evCard_${ev.id}" style="${ev.is_ended ? 'border-color:rgba(16,185,129,0.3);' : ''}">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div>
-                        <h5 class="mb-1">${ev.title}</h5>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h5 class="mb-0">${ev.title}</h5>
+                            ${ev.is_ended ? '<span class="badge" style="background:rgba(16,185,129,0.2);color:#34d399;font-size:0.7rem"><i class="bi bi-check-circle-fill me-1"></i>EVENT ENDED</span>' : ''}
+                        </div>
                         <small class="text-secondary">${new Date(ev.event_date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} &middot; ${ev.registered_count||0}/${ev.capacity} registered</small>
+                        ${ev.is_ended ? '<small class="text-success d-block mt-1"><i class="bi bi-award me-1"></i>Certificates auto-issued to all attendees</small>' : ''}
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button class="btn btn-outline-primary btn-sm" onclick="openCreateSession('${ev.id}')">
+                        ${!ev.is_ended ? `<button class="btn btn-outline-primary btn-sm" onclick="openCreateSession('${ev.id}')">
                             <i class="bi bi-plus me-1"></i>Add Session
-                        </button>
-                        <button class="btn btn-outline-success btn-sm" id="certBtn_${ev.id}" onclick="issueCertificates('${ev.id}','${safeTitle}')" title="Issue Certificates">
-                            <i class="bi bi-award me-1"></i>Issue Certs
-                        </button>
+                        </button>` : ''}
+                        ${!ev.is_ended ? `<button class="btn btn-success btn-sm" id="endBtn_${ev.id}" onclick="confirmEndEvent('${ev.id}','${safeTitle}')" title="End Event &amp; Issue Certificates">
+                            <i class="bi bi-flag-fill me-1"></i>End Event
+                        </button>` : ''}
                         <button class="btn btn-outline-danger btn-sm" onclick="confirmDeleteEvent('${ev.id}','${safeTitle}')" title="Delete Event">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -712,34 +716,80 @@ async function loadMyEvents() {
                             <i class="bi bi-bar-chart"></i>
                         </button>
                     </div>
-                </div>`).join('') : '<p class="text-secondary small">No sessions yet. Add one above.</p>'}
+                </div>`).join('') : '<p class="text-secondary small">No sessions yet.' + (!ev.is_ended ? ' Add one above.' : '') + '</p>'}
             </div>`;
         }
         container.innerHTML = html;
     } catch(e) { document.getElementById('myEventsList').innerHTML = '<p class="text-danger">Failed to load events.</p>'; }
 }
 
-// ── Issue Certificates for Event ───────────────────────────────────────
-async function issueCertificates(eventId, eventTitle) {
-    const token = localStorage.getItem('sc_token');
-    const btn = document.getElementById(`certBtn_${eventId}`);
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Issuing…'; }
+// ── Confirm End Event ──────────────────────────────────────────────────
+function confirmEndEvent(eventId, eventTitle) {
+    const existing = document.getElementById('endEventModal');
+    if (existing) existing.remove();
 
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'endEventModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content sc-modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title" style="color:#34d399">
+                        <i class="bi bi-flag-fill me-2"></i>End Event
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <p class="mb-2">You are about to end:</p>
+                    <p class="fw-bold mb-3" style="color:#60a5fa">&ldquo;${eventTitle}&rdquo;</p>
+                    <div class="p-3 rounded" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2)">
+                        <small style="color:#34d399">
+                            <i class="bi bi-award me-1"></i>
+                            <strong>Certificates will be automatically issued</strong> to all confirmed attendees.
+                            This action cannot be undone.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success btn-sm" id="confirmEndBtn"
+                        onclick="endEvent('${eventId}')">
+                        <i class="bi bi-flag-fill me-1"></i>Yes, End Event
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    modal.addEventListener('hidden.bs.modal', () => modal.remove());
+}
+
+async function endEvent(eventId) {
+    const btn = document.getElementById('confirmEndBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Ending…'; }
+    const token = localStorage.getItem('sc_token');
     try {
-        const res = await fetch(`/certificates/issue/${eventId}`, {
+        const res = await fetch(`/events/${eventId}/end`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
         const data = await res.json();
         if (res.ok) {
-            showToast(`✅ ${data.message}`, 'success');
+            const modalEl = document.getElementById('endEventModal');
+            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+            showToast(`🏆 ${data.message}`, 'success');
+            loadMyEvents();
+            loadCertificates(); // refresh certs tab too
         } else {
-            showToast(data.error || 'Failed to issue certificates', 'danger');
+            showToast(data.error || 'Failed to end event', 'danger');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-flag-fill me-1"></i>Yes, End Event'; }
         }
     } catch (err) {
         showToast('Network error. Please try again.', 'danger');
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-award me-1"></i>Issue Certs'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-flag-fill me-1"></i>Yes, End Event'; }
     }
 }
 

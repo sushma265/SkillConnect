@@ -27,13 +27,15 @@ class Event(Document):
         event_type   – 'event' or 'workshop'.
         venue        – Physical location.
         event_date   – Start date and time (required).
-        end_date     – Optional end date and time.
+        end_date     – Optional scheduled end date and time.
         price        – Ticket price in INR (0 = free).
         capacity     – Maximum attendee count.
         banner_url   – Banner image URL.
         tags         – List of keyword tags.
         is_virtual   – Whether the event is online.
         meeting_link – Virtual meeting URL (Zoom, Meet, etc.).
+        is_ended     – True once organizer marks the event as ended.
+        ended_at     – Timestamp when the event was ended.
         created_by   – Reference to the organiser User.
         created_at   – Timestamp of creation.
         updated_at   – Timestamp of last update.
@@ -58,6 +60,8 @@ class Event(Document):
     tags = ListField(StringField())
     is_virtual = BooleanField(default=False)
     meeting_link = StringField()
+    is_ended = BooleanField(default=False)
+    ended_at = DateTimeField()
     created_by = ReferenceField("User", required=True)
     created_at = DateTimeField(default=now_utc)
     updated_at = DateTimeField(default=now_utc)
@@ -89,6 +93,10 @@ class Event(Document):
             "tags": self.tags or [],
             "is_virtual": self.is_virtual,
             "meeting_link": self.meeting_link,
+            "is_ended": self.is_ended or False,
+            "ended_at": (
+                self.ended_at.isoformat() if self.ended_at else None
+            ),
             "registered_count": reg_count,
             "sessions_count": sess_count,
             "created_by": (

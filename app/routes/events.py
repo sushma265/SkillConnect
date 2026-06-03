@@ -281,3 +281,81 @@ def my_registrations():
 
 
 # ── GET /events/<id>/registrations ──────────────────────────────────────
+
+
+# ── POST /events/<id>/end ────────────────────────────────────────────────
+@events_bp.route("/<event_id>/end", methods=["POST"])
+@jwt_required()
+@role_required("organizer", "admin")
+def end_event(event_id):
+    """
+    Mark an event as ended and auto-issue completion certificates to all
+    confirmed attendees who don't already have one.
+
+    Only the event creator or an admin may call this endpoint.
+
+    Returns:
+        {
+            "message": "...",
+            "certificates_issued": <count>,
+            "certificates_skipped": <count>
+        }
+    """
+    from datetime import datetime, timezone
+    from app.models.certificate_model import Certificate
+    from app.models.registration_model import Registration
+    from mongoengine.errors import NotUniqueError
+
+    user = get_current_user()
+    ev = get_object_or_404(Event, id=event_id, description="Event not found")
+
+    # Only the creator or admin
+    if user.role != "admin" and str(ev.created_by.id) != str(user.id):
+        return jsonify({"error": "You can only end your own events"}), 403
+
+    if ev.is_ended:
+        return jsonify({"error": "Event has already been ended"}), 409
+
+    # Mark event as ended
+    ev.is_ended = True
+    ev.ended_at = datetime.now(timezone.utc)
+    ev.save()
+
+    # Format event date for certificates
+    event_date_str = ""
+    try:
+        event_date_str = ev.event_date.strftime("%d %b %Y") if ev.event_date else ""
+    except Exception:
+        event_date_str = str(ev.event_date)[:10] if ev.event_date else ""
+
+    # Auto-issue certificates to all confirmed attendees
+    regs = Registration.objects(event=ev, status="confirmed")
+    issued = 0
+    skipped = 0
+
+    for reg in regs:
+        try:
+            attendee = reg.user
+            cert = Certificate(
+                certificate_id=Certificate.generate_id(),
+                recipient=attendee,
+                event=ev,
+                issued_by=user,
+                recipient_name=attendee.name,
+                event_title=ev.title,
+                organizer_name=user.name,
+                event_date=event_date_str,
+            )
+            cert.save()
+            issued += 1
+        except NotUniqueError:
+            skipped += 1
+        except Exception:
+            skipped += 1
+
+    return jsonify({
+        "message": f'Event "{ev.title}" ended. {issued} certificate(s) issued.',
+        "certificates_issued": issued,
+        "certificates_skipped": skipped,
+        "event": ev.to_dict(),
+    }), 200
