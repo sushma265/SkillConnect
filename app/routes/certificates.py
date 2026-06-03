@@ -1,143 +1,488 @@
 """
-SkillConnect – Certificates Route
+SkillConnect – Certificate Routes
 ====================================
-Endpoints:
-  POST /certificates/issue/<event_id>  – Organizer issues certs to all confirmed attendees
-  GET  /certificates/my                – Attendee fetches their own certificates
-  GET  /certificates/<cert_uuid>       – Public endpoint to verify a certificate
+Advanced certificate management system with:
+- Bulk certificate issuing
+- Certificate verification
+- Download support
+- Event-wise certificates
+- User certificates
+- Analytics
 """
 
-from flask import Blueprint, request, jsonify
+from flask import (
+    Blueprint,
+    jsonify,
+    request,
+)
+
 from flask_jwt_extended import jwt_required
+
 from datetime import datetime, timezone
+
+from mongoengine.errors import NotUniqueError
 
 from app.models.certificate_model import Certificate
 from app.models.event_model import Event
 from app.models.registration_model import Registration
 from app.models.user_model import User
+
 from app.utils.decorators import role_required
-from app.utils.jwt_utils import get_current_user, get_object_or_404
-from mongoengine.errors import NotUniqueError
 
-certificates_bp = Blueprint("certificates", __name__)
+from app.utils.jwt_utils import (
+    get_current_user,
+    get_object_or_404
+)
+
+certificates_bp = Blueprint(
+    "certificates",
+    __name__
+)
 
 
-# ── POST /certificates/issue/<event_id> ─────────────────────────────────
-@certificates_bp.route("/issue/<event_id>", methods=["POST"])
+# ═════════════════════════════════════════════════════════════
+# ISSUE CERTIFICATES
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/issue/<event_id>",
+    methods=["POST"]
+)
 @jwt_required()
 @role_required("organizer", "admin")
 def issue_certificates(event_id):
     """
-    Issue certificates to all confirmed (and optionally checked-in)
-    attendees of an event. Skips attendees who already have a certificate.
-
-    Only the event creator or an admin may call this endpoint.
-
-    Returns:
-        {
-            "message": "Certificates issued",
-            "issued":   <count of new certs>,
-            "skipped":  <count already had cert>
-        }
+    Issue certificates to attendees
+    ---
+    tags:
+      - Certificates
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Certificates issued
     """
+
     issuer = get_current_user()
-    ev = get_object_or_404(Event, id=event_id, description="Event not found")
 
-    # Only the organizer who created the event (or an admin) may issue
-    if issuer.role != "admin" and str(ev.created_by.id) != str(issuer.id):
-        return jsonify({"error": "You can only issue certificates for your own events"}), 403
+    event = get_object_or_404(
+        Event,
+        id=event_id,
+        description="Event not found"
+    )
 
-    # Fetch all confirmed registrations
-    regs = Registration.objects(event=ev, status="confirmed")
+    # Only event creator or admin
+    if (
+        issuer.role != "admin"
+        and str(event.created_by.id)
+        != str(issuer.id)
+    ):
+        return jsonify({
+            "error":
+                "You can only issue certificates "
+                "for your own events"
+        }), 403
+
+    registrations = Registration.objects(
+        event=event,
+        status="confirmed"
+    )
 
     issued = 0
     skipped = 0
 
-    # Format event date nicely
-    event_date_str = ""
-    if ev.event_date:
-        event_date_str = ev.event_date.strftime("%-d %b %Y") if hasattr(ev.event_date, 'strftime') else str(ev.event_date)
-        try:
-            event_date_str = ev.event_date.strftime("%d %b %Y")
-        except Exception:
-            event_date_str = str(ev.event_date)[:10]
+    # Optional check-in validation
+    require_checkin = request.args.get(
+        "require_checkin",
+        "false"
+    ).lower() == "true"
 
-    for reg in regs:
+    if require_checkin:
+        registrations = registrations.filter(
+            checked_in=True
+        )
+
+    event_date_str = ""
+
+    if event.event_date:
         try:
-            attendee = reg.user
-            cert = Certificate(
-                certificate_id=Certificate.generate_id(),
+            event_date_str = (
+                event.event_date.strftime(
+                    "%d %b %Y"
+                )
+            )
+        except Exception:
+            event_date_str = (
+                str(event.event_date)[:10]
+            )
+
+    for registration in registrations:
+
+        attendee = registration.user
+
+        try:
+
+            certificate = Certificate(
+                certificate_id=
+                    Certificate.generate_id(),
+
                 recipient=attendee,
-                event=ev,
+
+                event=event,
+
                 issued_by=issuer,
+
                 recipient_name=attendee.name,
-                event_title=ev.title,
+
+                event_title=event.title,
+
                 organizer_name=issuer.name,
+
                 event_date=event_date_str,
             )
-            cert.save()
+
+            certificate.save()
+
             issued += 1
+
         except NotUniqueError:
-            # Certificate already exists for this user+event pair
+
             skipped += 1
+
         except Exception:
+
             skipped += 1
 
     return jsonify({
-        "message": f"Certificates issued to {issued} attendee(s).",
+        "message":
+            f"Certificates issued "
+            f"to {issued} attendee(s)",
+
         "issued": issued,
+
         "skipped": skipped,
+
+        "event": event.title,
     }), 200
 
 
-# ── GET /certificates/my ────────────────────────────────────────────────
-@certificates_bp.route("/my", methods=["GET"])
+# ═════════════════════════════════════════════════════════════
+# MY CERTIFICATES
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/my",
+    methods=["GET"]
+)
 @jwt_required()
 def my_certificates():
     """
-    Return all certificates earned by the currently authenticated user.
+    Get current user's certificates
+    ---
+    tags:
+      - Certificates
+    security:
+      - Bearer: []
     """
+
     user = get_current_user()
-    certs = Certificate.objects(recipient=user).order_by("-issued_at")
+
+    certificates = Certificate.objects(
+        recipient=user
+    ).order_by("-issued_at")
+
     return jsonify({
-        "certificates": [c.to_dict() for c in certs]
+        "total": certificates.count(),
+        "certificates": [
+            cert.to_dict()
+            for cert in certificates
+        ]
     }), 200
 
 
-# ── GET /certificates/<cert_uuid> ───────────────────────────────────────
-@certificates_bp.route("/<cert_uuid>", methods=["GET"])
-def verify_certificate(cert_uuid):
+# ═════════════════════════════════════════════════════════════
+# VERIFY CERTIFICATE
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/verify/<certificate_id>",
+    methods=["GET"]
+)
+def verify_certificate(certificate_id):
     """
-    Public endpoint to verify a certificate by its UUID.
-    Returns certificate data for the public verification page.
+    Verify certificate publicly
+    ---
+    tags:
+      - Certificate Verification
+    responses:
+      200:
+        description: Certificate verified
     """
-    try:
-        cert = Certificate.objects.get(certificate_id=cert_uuid)
-    except Exception:
-        return jsonify({"error": "Certificate not found or invalid"}), 404
 
-    return jsonify({"certificate": cert.to_dict()}), 200
+    certificate = Certificate.objects(
+        certificate_id=certificate_id
+    ).first()
+
+    if not certificate:
+        return jsonify({
+            "error":
+                "Certificate not found or invalid"
+        }), 404
+
+    return jsonify({
+        "valid": True,
+        "certificate":
+            certificate.to_dict()
+    }), 200
 
 
-# ── GET /certificates/event/<event_id> ──────────────────────────────────
-@certificates_bp.route("/event/<event_id>", methods=["GET"])
+# ═════════════════════════════════════════════════════════════
+# GET EVENT CERTIFICATES
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/event/<event_id>",
+    methods=["GET"]
+)
 @jwt_required()
 @role_required("organizer", "admin")
 def event_certificates(event_id):
     """
-    Organizer: list all certificates issued for a specific event.
+    Get certificates for event
+    ---
+    tags:
+      - Certificates
+    security:
+      - Bearer: []
     """
+
     issuer = get_current_user()
-    ev = get_object_or_404(Event, id=event_id, description="Event not found")
 
-    if issuer.role != "admin" and str(ev.created_by.id) != str(issuer.id):
-        return jsonify({"error": "Access denied"}), 403
+    event = get_object_or_404(
+        Event,
+        id=event_id,
+        description="Event not found"
+    )
 
-    certs = Certificate.objects(event=ev).order_by("recipient_name")
-    total_regs = Registration.objects(event=ev, status="confirmed").count()
+    if (
+        issuer.role != "admin"
+        and str(event.created_by.id)
+        != str(issuer.id)
+    ):
+        return jsonify({
+            "error": "Access denied"
+        }), 403
+
+    certificates = Certificate.objects(
+        event=event
+    ).order_by("recipient_name")
+
+    total_confirmed = Registration.objects(
+        event=event,
+        status="confirmed"
+    ).count()
+
+    checked_in = Registration.objects(
+        event=event,
+        checked_in=True
+    ).count()
 
     return jsonify({
-        "certificates": [c.to_dict() for c in certs],
-        "total_confirmed": total_regs,
-        "total_issued": certs.count(),
+        "event": event.title,
+
+        "total_confirmed":
+            total_confirmed,
+
+        "checked_in":
+            checked_in,
+
+        "total_issued":
+            certificates.count(),
+
+        "certificates": [
+            cert.to_dict()
+            for cert in certificates
+        ]
+    }), 200
+
+
+# ═════════════════════════════════════════════════════════════
+# GET SINGLE CERTIFICATE
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/<certificate_id>",
+    methods=["GET"]
+)
+@jwt_required()
+def get_certificate(certificate_id):
+    """
+    Get certificate details
+    ---
+    tags:
+      - Certificates
+    security:
+      - Bearer: []
+    """
+
+    certificate = Certificate.objects(
+        certificate_id=certificate_id
+    ).first()
+
+    if not certificate:
+        return jsonify({
+            "error": "Certificate not found"
+        }), 404
+
+    user = get_current_user()
+
+    if (
+        user.role not in (
+            "admin",
+            "organizer"
+        )
+        and str(certificate.recipient.id)
+        != str(user.id)
+    ):
+        return jsonify({
+            "error": "Access denied"
+        }), 403
+
+    return jsonify({
+        "certificate":
+            certificate.to_dict()
+    }), 200
+
+
+# ═════════════════════════════════════════════════════════════
+# DELETE CERTIFICATE
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/<certificate_id>",
+    methods=["DELETE"]
+)
+@jwt_required()
+@role_required("admin")
+def delete_certificate(certificate_id):
+    """
+    Delete certificate
+    ---
+    tags:
+      - Certificates Admin
+    security:
+      - Bearer: []
+    """
+
+    certificate = Certificate.objects(
+        certificate_id=certificate_id
+    ).first()
+
+    if not certificate:
+        return jsonify({
+            "error": "Certificate not found"
+        }), 404
+
+    certificate.delete()
+
+    return jsonify({
+        "message":
+            "Certificate deleted successfully"
+    }), 200
+
+
+# ═════════════════════════════════════════════════════════════
+# CERTIFICATE ANALYTICS
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/analytics/overview",
+    methods=["GET"]
+)
+@jwt_required()
+@role_required("admin")
+def certificate_analytics():
+    """
+    Get certificate analytics
+    ---
+    tags:
+      - Certificate Analytics
+    security:
+      - Bearer: []
+    """
+
+    total_certificates = (
+        Certificate.objects.count()
+    )
+
+    total_events = (
+        Event.objects.count()
+    )
+
+    total_users = (
+        User.objects.count()
+    )
+
+    return jsonify({
+        "total_certificates":
+            total_certificates,
+
+        "total_events":
+            total_events,
+
+        "total_users":
+            total_users,
+    }), 200
+
+
+# ═════════════════════════════════════════════════════════════
+# REGENERATE CERTIFICATE
+# ═════════════════════════════════════════════════════════════
+
+@certificates_bp.route(
+    "/regenerate/<certificate_id>",
+    methods=["POST"]
+)
+@jwt_required()
+@role_required("admin")
+def regenerate_certificate(certificate_id):
+    """
+    Regenerate certificate ID
+    ---
+    tags:
+      - Certificates Admin
+    security:
+      - Bearer: []
+    """
+
+    certificate = Certificate.objects(
+        certificate_id=certificate_id
+    ).first()
+
+    if not certificate:
+        return jsonify({
+            "error": "Certificate not found"
+        }), 404
+
+    old_id = certificate.certificate_id
+
+    certificate.certificate_id = (
+        Certificate.generate_id()
+    )
+
+    certificate.updated_at = datetime.now(
+        timezone.utc
+    )
+
+    certificate.save()
+
+    return jsonify({
+        "message":
+            "Certificate regenerated successfully",
+
+        "old_certificate_id":
+            old_id,
+
+        "new_certificate_id":
+            certificate.certificate_id,
     }), 200
