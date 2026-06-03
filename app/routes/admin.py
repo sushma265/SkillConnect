@@ -2,7 +2,7 @@
 SkillConnect – Admin Routes
 ==============================
 Platform administration: user management, event oversight,
-organizer promotion, and platform-wide analytics.
+organizer promotion, moderation, analytics, and platform controls.
 """
 
 from flask import Blueprint, request, jsonify
@@ -15,6 +15,7 @@ from app.models.question_model import Question
 from app.models.poll_model import PollVote
 from app.models.networking_model import NetworkingRequest
 from app.models.feedback_model import Feedback
+
 from app.utils.decorators import role_required
 from app.utils.jwt_utils import get_object_or_404
 from app.utils.analytics_utils import (
@@ -26,109 +27,187 @@ from app.utils.analytics_utils import (
 admin_bp = Blueprint("admin", __name__)
 
 
-# ── GET /admin/users ────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# USERS MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
 @admin_bp.route("/users", methods=["GET"])
 @jwt_required()
 @role_required("admin")
 def get_users():
     """
-    Get all users, optionally filtered by role.
+    Get all users
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Users
+    security:
+      - Bearer: []
     parameters:
-      - in: query
-        name: role
+      - name: role
+        in: query
         type: string
-        enum: [attendee, organizer, admin]
+        enum:
+          - attendee
+          - organizer
+          - admin
     responses:
-      200: {description: User list}
+      200:
+        description: Users fetched successfully
     """
+
     role = request.args.get("role")
-    qs = User.objects(role=role) if role else User.objects()
-    users = qs.order_by("-created_at")
+
+    users = (
+        User.objects(role=role).order_by("-created_at")
+        if role
+        else User.objects().order_by("-created_at")
+    )
+
     return jsonify({
         "total": users.count(),
-        "users": [u.to_dict() for u in users],
+        "users": [user.to_dict() for user in users]
     }), 200
 
 
-# ── GET /admin/users/<user_id> ──────────────────────────────────────────
 @admin_bp.route("/users/<user_id>", methods=["GET"])
 @jwt_required()
 @role_required("admin")
 def get_user(user_id):
     """
-    Get a user's full details (admin only).
+    Get single user details
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Users
+    security:
+      - Bearer: []
+    parameters:
+      - name: user_id
+        in: path
+        type: string
+        required: true
+    responses:
+      200:
+        description: User details fetched
     """
+
     user = get_object_or_404(
-        User, id=user_id, description="User not found"
+        User,
+        id=user_id,
+        description="User not found"
     )
-    return jsonify({"user": user.to_dict()}), 200
+
+    return jsonify({
+        "user": user.to_dict()
+    }), 200
 
 
-# ── PUT /admin/users/<user_id>/toggle-active ────────────────────────────
 @admin_bp.route("/users/<user_id>/toggle-active", methods=["PUT"])
 @jwt_required()
 @role_required("admin")
 def toggle_user_active(user_id):
     """
-    Activate or deactivate a user account.
+    Activate or deactivate user
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Users
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: User status updated
     """
+
     user = get_object_or_404(
-        User, id=user_id, description="User not found"
+        User,
+        id=user_id,
+        description="User not found"
     )
+
     user.is_active = not user.is_active
     user.save()
 
     status = "activated" if user.is_active else "deactivated"
+
     return jsonify({
         "message": f"User {status}",
-        "user": user.to_dict(),
+        "user": user.to_dict()
     }), 200
 
 
-# ── PUT /admin/promote-organizer ────────────────────────────────────────
+@admin_bp.route("/users/<user_id>", methods=["DELETE"])
+@jwt_required()
+@role_required("admin")
+def delete_user(user_id):
+    """
+    Delete user account
+    ---
+    tags:
+      - Admin Users
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: User deleted
+    """
+
+    user = get_object_or_404(
+        User,
+        id=user_id,
+        description="User not found"
+    )
+
+    if user.role == "admin":
+        return jsonify({
+            "error": "Cannot delete admin user"
+        }), 400
+
+    user.delete()
+
+    return jsonify({
+        "message": "User deleted successfully"
+    }), 200
+
+
+# ─────────────────────────────────────────────────────────────
+# ROLE MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
 @admin_bp.route("/promote-organizer", methods=["PUT"])
 @jwt_required()
 @role_required("admin")
 def promote_to_organizer():
     """
-    Promote a user to organizer role.
+    Promote user to organizer
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          required: [user_id]
-          properties:
-            user_id: {type: string}
+    tags:
+      - Admin Roles
+    security:
+      - Bearer: []
+    requestBody:
+      required: true
     responses:
-      200: {description: User promoted}
+      200:
+        description: User promoted
     """
+
     data = request.get_json()
+
     user_id = data.get("user_id")
 
     if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+        return jsonify({
+            "error": "user_id is required"
+        }), 400
 
     user = get_object_or_404(
-        User, id=user_id, description="User not found"
+        User,
+        id=user_id,
+        description="User not found"
     )
 
     if user.role == "admin":
         return jsonify({
-            "error": "Cannot change admin role"
+            "error": "Cannot modify admin role"
         }), 400
 
     user.role = "organizer"
@@ -136,45 +215,44 @@ def promote_to_organizer():
 
     return jsonify({
         "message": f"{user.name} promoted to organizer",
-        "user": user.to_dict(),
+        "user": user.to_dict()
     }), 200
 
 
-# ── PUT /admin/demote-user ─────────────────────────────────────────────
 @admin_bp.route("/demote-user", methods=["PUT"])
 @jwt_required()
 @role_required("admin")
 def demote_to_attendee():
     """
-    Demote an organizer back to attendee.
+    Demote organizer to attendee
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          required: [user_id]
-          properties:
-            user_id: {type: string}
+    tags:
+      - Admin Roles
+    security:
+      - Bearer: []
     responses:
-      200: {description: User demoted}
+      200:
+        description: User demoted
     """
+
     data = request.get_json()
+
     user_id = data.get("user_id")
 
     if not user_id:
-        return jsonify({"error": "user_id is required"}), 400
+        return jsonify({
+            "error": "user_id is required"
+        }), 400
 
     user = get_object_or_404(
-        User, id=user_id, description="User not found"
+        User,
+        id=user_id,
+        description="User not found"
     )
 
     if user.role == "admin":
         return jsonify({
-            "error": "Cannot change admin role"
+            "error": "Cannot modify admin role"
         }), 400
 
     user.role = "attendee"
@@ -182,88 +260,238 @@ def demote_to_attendee():
 
     return jsonify({
         "message": f"{user.name} demoted to attendee",
-        "user": user.to_dict(),
+        "user": user.to_dict()
     }), 200
 
 
-# ── GET /admin/events ──────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# EVENTS MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
 @admin_bp.route("/events", methods=["GET"])
 @jwt_required()
 @role_required("admin")
-def admin_events():
+def get_all_events():
     """
-    Get all events (admin view).
+    Get all platform events
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Events
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Events fetched successfully
     """
+
     events = Event.objects().order_by("-created_at")
+
     return jsonify({
         "total": events.count(),
-        "events": [e.to_dict() for e in events],
+        "events": [event.to_dict() for event in events]
     }), 200
 
 
-# ── DELETE /admin/events/<event_id> ─────────────────────────────────────
 @admin_bp.route("/events/<event_id>", methods=["DELETE"])
 @jwt_required()
 @role_required("admin")
-def admin_delete_event(event_id):
+def delete_event(event_id):
     """
-    Force-delete an event (admin only).
+    Delete event
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Events
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Event deleted
     """
+
     event = get_object_or_404(
-        Event, id=event_id, description="Event not found"
+        Event,
+        id=event_id,
+        description="Event not found"
     )
-    # Cascade delete registrations
+
     Registration.objects(event=event).delete()
+    Question.objects(event=event).delete()
+    PollVote.objects(event=event).delete()
+    NetworkingRequest.objects(event=event).delete()
+    Feedback.objects(event=event).delete()
+
     event.delete()
-    return jsonify({"message": "Event deleted by admin"}), 200
+
+    return jsonify({
+        "message": "Event deleted successfully"
+    }), 200
 
 
-# ── GET /admin/analytics ───────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# ANALYTICS
+# ─────────────────────────────────────────────────────────────
+
 @admin_bp.route("/analytics", methods=["GET"])
 @jwt_required()
 @role_required("admin")
-def admin_analytics():
+def platform_analytics():
     """
-    Get platform-wide analytics (admin only).
+    Get platform analytics
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Analytics
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Platform analytics
     """
-    return jsonify(get_platform_analytics()), 200
+
+    return jsonify(
+        get_platform_analytics()
+    ), 200
 
 
-# ── GET /admin/analytics/events/<event_id> ──────────────────────────────
 @admin_bp.route("/analytics/events/<event_id>", methods=["GET"])
 @jwt_required()
 @role_required("admin")
-def admin_event_analytics(event_id):
+def event_analytics(event_id):
     """
-    Get per-event analytics (admin only).
+    Get event analytics
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Analytics
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Event analytics
     """
+
     event = get_object_or_404(
-        Event, id=event_id, description="Event not found"
+        Event,
+        id=event_id,
+        description="Event not found"
     )
-    return jsonify(get_event_analytics(event)), 200
+
+    return jsonify(
+        get_event_analytics(event)
+    ), 200
 
 
-# ── GET /admin/analytics/participation ──────────────────────────────────
 @admin_bp.route("/analytics/participation", methods=["GET"])
 @jwt_required()
 @role_required("admin")
-def admin_participation():
+def participation_analytics():
     """
-    Get participation rates across all events.
+    Get participation analytics
     ---
-    tags: [Admin]
-    security: [{Bearer: []}]
+    tags:
+      - Admin Analytics
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Participation analytics
     """
-    return jsonify({"events": get_participation_data()}), 200
+
+    return jsonify({
+        "events": get_participation_data()
+    }), 200
+
+
+# ─────────────────────────────────────────────────────────────
+# DASHBOARD STATS
+# ─────────────────────────────────────────────────────────────
+
+@admin_bp.route("/dashboard/stats", methods=["GET"])
+@jwt_required()
+@role_required("admin")
+def dashboard_stats():
+    """
+    Get dashboard statistics
+    ---
+    tags:
+      - Admin Dashboard
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Dashboard statistics
+    """
+
+    total_users = User.objects.count()
+    total_events = Event.objects.count()
+    total_registrations = Registration.objects.count()
+    total_feedbacks = Feedback.objects.count()
+
+    organizers = User.objects(role="organizer").count()
+    attendees = User.objects(role="attendee").count()
+
+    active_events = Event.objects(status="active").count()
+
+    return jsonify({
+        "total_users": total_users,
+        "total_events": total_events,
+        "total_registrations": total_registrations,
+        "total_feedbacks": total_feedbacks,
+        "total_organizers": organizers,
+        "total_attendees": attendees,
+        "active_events": active_events
+    }), 200
+
+
+# ─────────────────────────────────────────────────────────────
+# FEEDBACK MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
+@admin_bp.route("/feedbacks", methods=["GET"])
+@jwt_required()
+@role_required("admin")
+def get_feedbacks():
+    """
+    Get all feedbacks
+    ---
+    tags:
+      - Admin Feedback
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Feedback list
+    """
+
+    feedbacks = Feedback.objects().order_by("-created_at")
+
+    return jsonify({
+        "total": feedbacks.count(),
+        "feedbacks": [f.to_dict() for f in feedbacks]
+    }), 200
+
+
+# ─────────────────────────────────────────────────────────────
+# QUESTIONS MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
+@admin_bp.route("/questions", methods=["GET"])
+@jwt_required()
+@role_required("admin")
+def get_questions():
+    """
+    Get all questions
+    ---
+    tags:
+      - Admin Questions
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Questions fetched
+    """
+
+    questions = Question.objects().order_by("-created_at")
+
+    return jsonify({
+        "total": questions.count(),
+        "questions": [q.to_dict() for q in questions]
+    }), 200
