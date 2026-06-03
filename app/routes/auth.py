@@ -29,7 +29,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.environ.get(
     "GOOGLE_REDIRECT_URI",
     "http://localhost:5000/auth/google/callback",
-    "https://skillconnect-12m0.onrender.com/auth/google/callback",
+    
 )
 SCOPES = [
     "openid",
