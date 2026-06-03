@@ -93,6 +93,90 @@ SkillConnect/
 ```
 
 ---
+## 🔗 API Endpoints
+
+SkillConnect follows a RESTful API architecture built using Flask and MongoDB.
+
+### Authentication APIs
+
+| Method | Endpoint                | Description              |
+| ------ | ----------------------- | ------------------------ |
+| POST   | `/auth/register`        | Register a new user      |
+| POST   | `/auth/login`           | User login               |
+| GET    | `/auth/google`          | Google OAuth login       |
+| GET    | `/auth/google/callback` | Google OAuth callback    |
+| GET    | `/auth/profile`         | Get current user profile |
+| POST   | `/auth/logout`          | Logout user              |
+
+### Event APIs
+
+| Method | Endpoint                           | Description             |
+| ------ | ---------------------------------- | ----------------------- |
+| POST   | `/events`                          | Create a new event      |
+| GET    | `/events`                          | Get all events          |
+| GET    | `/events/<event_id>`               | Get event details       |
+| PUT    | `/events/<event_id>`               | Update an event         |
+| DELETE | `/events/<event_id>`               | Delete an event         |
+| POST   | `/events/<event_id>/register`      | Register for an event   |
+| GET    | `/events/my-registrations`         | Get user registrations  |
+| GET    | `/events/<event_id>/registrations` | Get event registrations |
+
+### Session APIs
+
+| Method | Endpoint                 | Description         |
+| ------ | ------------------------ | ------------------- |
+| POST   | `/sessions`              | Create session      |
+| GET    | `/sessions`              | Get all sessions    |
+| GET    | `/sessions/<session_id>` | Get session details |
+| PUT    | `/sessions/<session_id>` | Update session      |
+| DELETE | `/sessions/<session_id>` | Delete session      |
+
+### Announcement APIs
+
+| Method | Endpoint              | Description           |
+| ------ | --------------------- | --------------------- |
+| POST   | `/announcements`      | Create announcement   |
+| GET    | `/announcements`      | Get all announcements |
+| GET    | `/announcements/<id>` | Get announcement      |
+| PUT    | `/announcements/<id>` | Update announcement   |
+| DELETE | `/announcements/<id>` | Delete announcement   |
+
+### Networking APIs
+
+| Method | Endpoint               | Description             |
+| ------ | ---------------------- | ----------------------- |
+| POST   | `/network/connect`     | Send connection request |
+| GET    | `/network/connections` | Get user connections    |
+| PUT    | `/network/accept/<id>` | Accept request          |
+| DELETE | `/network/remove/<id>` | Remove connection       |
+
+### Analytics APIs
+
+| Method | Endpoint                | Description        |
+| ------ | ----------------------- | ------------------ |
+| GET    | `/analytics`            | Platform analytics |
+| GET    | `/analytics/events`     | Event analytics    |
+| GET    | `/analytics/sessions`   | Session analytics  |
+| GET    | `/analytics/engagement` | Engagement metrics |
+
+### Admin APIs
+
+| Method | Endpoint             | Description      |
+| ------ | -------------------- | ---------------- |
+| GET    | `/admin/users`       | Manage users     |
+| DELETE | `/admin/users/<id>`  | Delete user      |
+| GET    | `/admin/events`      | Manage events    |
+| DELETE | `/admin/events/<id>` | Delete event     |
+| GET    | `/admin/reports`     | Platform reports |
+
+### Utility APIs
+
+| Method | Endpoint  | Description  |
+| ------ | --------- | ------------ |
+| GET    | `/health` | Health check |
+| GET    | `/`       | Home page    |
+
+**Total APIs:** 25+ REST endpoints supporting authentication, event management, networking, analytics, QR check-ins, announcements, and administration.
 
 ## ⚙️ Getting Started
 
