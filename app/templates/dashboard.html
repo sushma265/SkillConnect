@@ -693,6 +693,9 @@ async function loadMyEvents() {
                         ${!ev.is_ended ? `<button class="btn btn-outline-primary btn-sm" onclick="openCreateSession('${ev.id}')">
                             <i class="bi bi-plus me-1"></i>Add Session
                         </button>` : ''}
+                        ${!ev.is_ended ? `<a href="/live/${ev.id}?role=broadcaster" class="btn btn-danger btn-sm" title="Go Live">
+                            <i class="bi bi-broadcast me-1"></i>Go Live
+                        </a>` : ''}
                         ${!ev.is_ended ? `<button class="btn btn-success btn-sm" id="endBtn_${ev.id}" onclick="confirmEndEvent('${ev.id}','${safeTitle}')" title="End Event &amp; Issue Certificates">
                             <i class="bi bi-flag-fill me-1"></i>End Event
                         </button>` : ''}

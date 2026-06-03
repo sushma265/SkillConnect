@@ -147,6 +147,10 @@ async function loadEventDetail() {
                             <div class="progress mt-2" style="height:4px"><div class="progress-bar bg-primary" style="width:${Math.min(100,((e.registered_count||0)/e.capacity)*100)}%"></div></div>
                         </div>
                         <div class="sc-sidebar-stat mb-3"><div class="d-flex justify-content-between"><span class="text-secondary">Rating</span><span class="text-warning">${avgRating} ★</span></div></div>
+                        ${e.is_live ? `<a href="/live/${e.id}" class="btn btn-danger w-100 mb-2" style="background:linear-gradient(135deg,#ef4444,#dc2626);border:none;font-weight:700">
+                            <i class="bi bi-broadcast me-1"></i>Join Live Stream
+                            <span class="badge bg-white text-danger ms-1" style="font-size:0.65rem">LIVE</span>
+                        </a>` : ''}
                         <button class="btn btn-primary w-100 sc-btn-primary" onclick="registerForEvent('${e.id}')"><i class="bi bi-ticket-perforated me-1"></i>Register Now</button>
                     </div>
                 </div>

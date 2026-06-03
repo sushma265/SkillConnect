@@ -62,6 +62,7 @@ class Event(Document):
     meeting_link = StringField()
     is_ended = BooleanField(default=False)
     ended_at = DateTimeField()
+    is_live = BooleanField(default=False)
     created_by = ReferenceField("User", required=True)
     created_at = DateTimeField(default=now_utc)
     updated_at = DateTimeField(default=now_utc)
@@ -97,6 +98,7 @@ class Event(Document):
             "ended_at": (
                 self.ended_at.isoformat() if self.ended_at else None
             ),
+            "is_live": self.is_live or False,
             "registered_count": reg_count,
             "sessions_count": sess_count,
             "created_by": (

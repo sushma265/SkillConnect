@@ -37,11 +37,12 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
-# Run with gunicorn
+# Run with gunicorn + eventlet (required for Flask-SocketIO)
 CMD ["gunicorn", "run:app", \
      "--bind", "0.0.0.0:5000", \
-     "--workers", "4", \
-     "--threads", "2", \
+     "--worker-class", "eventlet", \
+     "-w", "1", \
      "--timeout", "120", \
+     "--keep-alive", "5", \
      "--access-logfile", "-", \
      "--error-logfile", "-"]

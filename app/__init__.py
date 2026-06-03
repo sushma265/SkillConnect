@@ -2,15 +2,16 @@
 SkillConnect – Application Factory
 =====================================
 Creates and configures the Flask application, registers blueprints,
-initialises extensions (JWT, MongoDB), and mounts the index route.
+initialises extensions (JWT, MongoDB, SocketIO), and mounts the index route.
 
 Usage:
-    from app import create_app
+    from app import create_app, socketio
     app = create_app()
 """
 
 from flask import Flask, render_template
 from flask_jwt_extended import JWTManager
+from flask_socketio import SocketIO
 from mongoengine import connect
 from dotenv import load_dotenv
 import os
@@ -18,8 +19,9 @@ import os
 # Load .env before anything else reads os.environ
 load_dotenv()
 
-# JWT extension instance – initialised inside create_app()
+# Extensions – initialised inside create_app()
 jwt = JWTManager()
+socketio = SocketIO()
 
 
 def create_app(config_name: str = None):
@@ -52,15 +54,22 @@ def create_app(config_name: str = None):
     )
     connect(
         host=mongo_uri,
-        maxPoolSize=20,          # max simultaneous connections
-        minPoolSize=2,           # keep 2 warm connections alive
-        serverSelectionTimeoutMS=3000,   # fail fast if MongoDB is down
+        maxPoolSize=20,
+        minPoolSize=2,
+        serverSelectionTimeoutMS=3000,
         connectTimeoutMS=3000,
         socketTimeoutMS=10000,
     )
 
     # ── Initialise extensions ───────────────────────────────────────────
     jwt.init_app(app)
+    socketio.init_app(
+        app,
+        cors_allowed_origins="*",
+        async_mode="eventlet",
+        logger=False,
+        engineio_logger=False,
+    )
 
     # ── Register blueprints ─────────────────────────────────────────────
     from app.routes.auth import auth_bp
@@ -77,6 +86,7 @@ def create_app(config_name: str = None):
     from app.routes.admin import admin_bp
     from app.routes.chat import chat_bp
     from app.routes.certificates import certificates_bp
+    from app.routes.live import live_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(users_bp, url_prefix="/users")
@@ -92,6 +102,11 @@ def create_app(config_name: str = None):
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(chat_bp, url_prefix="/chat")
     app.register_blueprint(certificates_bp, url_prefix="/certificates")
+    app.register_blueprint(live_bp, url_prefix="/live")
+
+    # ── Register SocketIO events (signaling for WebRTC) ─────────────────
+    from app.routes.live import register_socketio_events
+    register_socketio_events(socketio)
 
     # ── Front-end routes ────────────────────────────────────────────────
     @app.route("/")
@@ -143,6 +158,11 @@ def create_app(config_name: str = None):
     def certificate_page(cert_uuid):
         """Serve the public certificate verification page."""
         return render_template("certificate.html", cert_uuid=cert_uuid)
+
+    @app.route("/live/<event_id>")
+    def live_room_page(event_id):
+        """Serve the WebRTC live meeting room page."""
+        return render_template("live_room.html", event_id=event_id)
 
     # ── Health check ────────────────────────────────────────────────────
     @app.route("/health")

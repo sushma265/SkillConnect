@@ -9,7 +9,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 4 --threads 2 --timeout 120
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --worker-class eventlet -w 1 --timeout 120 --keep-alive 5
     healthCheckPath: /health
     envVars:
       - key: FLASK_ENV
@@ -27,6 +27,10 @@ services:
       - key: GOOGLE_REDIRECT_URI
         sync: false
       - key: FRONTEND_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: METERED_API_KEY
         sync: false
       - key: PYTHON_VERSION
         value: "3.11.7"

@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+{% block title %}Live Event – SkillConnect{% endblock %}
+{% block extra_css %}
+<style>
+.live-page { min-height:100vh; background:#0a0f1a; display:flex; flex-direction:column; }
+.live-header { background:rgba(10,15,26,0.95); border-bottom:1px solid rgba(255,255,255,0.08); padding:0.75rem 1.5rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+.live-badge { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3); border-radius:50px; padding:0.3rem 0.8rem; font-size:0.78rem; font-weight:700; letter-spacing:0.05em; }
+.live-badge .dot { width:8px; height:8px; border-radius:50%; background:#ef4444; animation:pulse-dot 1.2s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+.live-body { flex:1; display:grid; grid-template-columns:1fr 320px; gap:0; height:calc(100vh - 57px); }
+.live-video-area { display:flex; flex-direction:column; background:#000; position:relative; }
+#remoteVideo, #localVideo { width:100%; height:100%; object-fit:cover; background:#111; }
+.video-wrapper { flex:1; position:relative; overflow:hidden; }
+.pip-local { position:absolute; bottom:1rem; right:1rem; width:160px; height:110px; border-radius:12px; overflow:hidden; border:2px solid rgba(255,255,255,0.2); box-shadow:0 4px 24px rgba(0,0,0,0.5); z-index:10; }
+.pip-local video { width:100%; height:100%; object-fit:cover; }
+.live-controls { display:flex; align-items:center; justify-content:center; gap:1rem; padding:0.75rem; background:rgba(0,0,0,0.8); }
+.ctrl-btn { width:48px; height:48px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; font-size:1.1rem; cursor:pointer; transition:all 0.2s; }
+.ctrl-btn-default { background:rgba(255,255,255,0.1); color:#fff; }
+.ctrl-btn-default:hover { background:rgba(255,255,255,0.2); }
+.ctrl-btn-danger { background:#ef4444; color:#fff; }
+.ctrl-btn-danger:hover { background:#dc2626; }
+.ctrl-btn-muted { background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+.live-sidebar { display:flex; flex-direction:column; border-left:1px solid rgba(255,255,255,0.07); background:#0d1321; }
+.sidebar-tabs { display:flex; border-bottom:1px solid rgba(255,255,255,0.07); }
+.stab { flex:1; padding:0.7rem; text-align:center; font-size:0.8rem; font-weight:600; color:#64748b; border:none; background:none; cursor:pointer; transition:all 0.2s; border-bottom:2px solid transparent; }
+.stab.active { color:#60a5fa; border-bottom-color:#60a5fa; }
+.tab-content { flex:1; overflow-y:auto; display:none; flex-direction:column; }
+.tab-content.active { display:flex; }
+.chat-messages { flex:1; overflow-y:auto; padding:1rem; display:flex; flex-direction:column; gap:0.5rem; }
+.chat-msg { background:rgba(255,255,255,0.04); border-radius:10px; padding:0.5rem 0.75rem; }
+.chat-msg .name { font-size:0.72rem; font-weight:700; color:#60a5fa; margin-bottom:0.15rem; }
+.chat-msg .text { font-size:0.85rem; color:#cbd5e1; }
+.chat-msg.organizer .name { color:#34d399; }
+.chat-input-row { padding:0.75rem; border-top:1px solid rgba(255,255,255,0.07); display:flex; gap:0.5rem; }
+.chat-input { flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:0.5rem 0.75rem; color:#e2e8f0; font-size:0.85rem; outline:none; }
+.chat-input::placeholder { color:#475569; }
+.chat-send { background:linear-gradient(135deg,#3b82f6,#06b6d4); border:none; border-radius:8px; padding:0.5rem 0.75rem; color:#fff; cursor:pointer; transition:all 0.2s; }
+.viewers-list { padding:1rem; display:flex; flex-direction:column; gap:0.5rem; overflow-y:auto; }
+.viewer-item { display:flex; align-items:center; gap:0.6rem; padding:0.4rem; border-radius:8px; }
+.viewer-avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#06b6d4); display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; color:#fff; flex-shrink:0; }
+.viewer-name { font-size:0.85rem; color:#cbd5e1; }
+.waiting-screen { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; color:#64748b; }
+.waiting-screen .pulse-ring { width:80px; height:80px; border-radius:50%; border:3px solid rgba(59,130,246,0.3); animation:pulse-ring 2s infinite; display:flex; align-items:center; justify-content:center; font-size:2rem; }
+@keyframes pulse-ring { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.1);opacity:0.6} }
+.viewer-count-badge { display:flex; align-items:center; gap:0.5rem; background:rgba(255,255,255,0.05); border-radius:50px; padding:0.3rem 0.8rem; font-size:0.8rem; color:#94a3b8; }
+.start-live-btn { background:linear-gradient(135deg,#ef4444,#dc2626); border:none; color:#fff; padding:0.65rem 1.5rem; border-radius:10px; font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.25s; display:flex; align-items:center; gap:0.5rem; }
+.start-live-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(239,68,68,0.4); }
+.stop-live-btn { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; padding:0.65rem 1.5rem; border-radius:10px; font-weight:700; font-size:0.9rem; cursor:pointer; }
+@media(max-width:768px) { .live-body { grid-template-columns:1fr; grid-template-rows:1fr 50vh; } .live-sidebar { height:50vh; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="live-page" id="livePage">
+  <!-- Header -->
+  <div class="live-header">
+    <div class="d-flex align-items-center gap-3">
+      <a href="/dashboard" class="text-secondary text-decoration-none"><i class="bi bi-arrow-left"></i></a>
+      <div>
+        <div class="fw-700" id="liveEventTitle" style="color:#e2e8f0">Loading…</div>
+        <div class="text-secondary" style="font-size:0.75rem" id="liveSubtitle">SkillConnect Live</div>
+      </div>
+      <div class="live-badge d-none" id="liveBadge"><div class="dot"></div>LIVE</div>
+      <div class="live-badge d-none" id="waitingBadge" style="background:rgba(99,102,241,0.15);color:#a78bfa;border-color:rgba(99,102,241,0.3)"><i class="bi bi-clock me-1"></i>WAITING</div>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="viewer-count-badge"><i class="bi bi-eye me-1"></i><span id="viewerCount">0</span> watching</div>
+      <!-- Organizer controls -->
+      <div id="broadcasterControls" class="d-none d-flex gap-2">
+        <button class="start-live-btn" id="startLiveBtn" onclick="startBroadcast()">
+          <i class="bi bi-broadcast"></i> Go Live
+        </button>
+        <button class="stop-live-btn d-none" id="stopLiveBtn" onclick="stopBroadcast()">
+          <i class="bi bi-stop-circle me-1"></i>End Stream
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="live-body">
+    <!-- Video Area -->
+    <div class="live-video-area">
+      <!-- Waiting screen (shown until stream starts) -->
+      <div class="waiting-screen" id="waitingScreen">
+        <div class="pulse-ring"><i class="bi bi-broadcast" style="color:#3b82f6"></i></div>
+        <h5 style="color:#94a3b8" id="waitingMsg">Stream hasn't started yet</h5>
+        <p class="text-secondary small text-center" style="max-width:300px">The organizer will start the live stream soon. Stay here, it'll begin automatically.</p>
+      </div>
+
+      <!-- Remote video (viewer sees this) -->
+      <div class="video-wrapper d-none" id="videoWrapper">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <!-- Broadcaster's own preview in pip -->
+        <div class="pip-local d-none" id="pipLocal">
+          <video id="localVideo" autoplay playsinline muted></video>
+        </div>
+      </div>
+
+      <!-- Controls bar (organizer only) -->
+      <div class="live-controls d-none" id="broadcasterBar">
+        <button class="ctrl-btn ctrl-btn-default" id="micBtn" onclick="toggleMic()" title="Mute/Unmute">
+          <i class="bi bi-mic-fill"></i>
+        </button>
+        <button class="ctrl-btn ctrl-btn-default" id="camBtn" onclick="toggleCam()" title="Camera on/off">
+          <i class="bi bi-camera-video-fill"></i>
+        </button>
+        <button class="ctrl-btn ctrl-btn-default" id="screenBtn" onclick="toggleScreen()" title="Share screen">
+          <i class="bi bi-display"></i>
+        </button>
+        <button class="ctrl-btn ctrl-btn-danger" onclick="stopBroadcast()" title="End stream">
+          <i class="bi bi-telephone-x-fill"></i>
+        </button>
+      </div>
+
+      <!-- Viewer raise hand btn -->
+      <div class="live-controls d-none" id="viewerBar">
+        <button class="ctrl-btn ctrl-btn-default" id="handBtn" onclick="raiseHand()" title="Raise hand">
+          <i class="bi bi-hand-index-thumb"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="live-sidebar">
+      <div class="sidebar-tabs">
+        <button class="stab active" onclick="switchTab('chat', this)"><i class="bi bi-chat me-1"></i>Chat</button>
+        <button class="stab" onclick="switchTab('viewers', this)"><i class="bi bi-people me-1"></i>Viewers</button>
+      </div>
+      <!-- Chat Tab -->
+      <div class="tab-content active" id="tab-chat">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chatInput" placeholder="Type a message…" maxlength="200" onkeydown="if(event.key==='Enter')sendChat()">
+          <button class="chat-send" onclick="sendChat()"><i class="bi bi-send-fill"></i></button>
+        </div>
+      </div>
+      <!-- Viewers Tab -->
+      <div class="tab-content" id="tab-viewers">
+        <div class="viewers-list" id="viewersList">
+          <p class="text-secondary small text-center py-3">No viewers yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const EVENT_ID = "{{ event_id }}";
+const token    = localStorage.getItem('sc_token');
+const user     = JSON.parse(localStorage.getItem('sc_user') || '{}');
+const MY_NAME  = user.name || 'Viewer';
+
+const urlParams = new URLSearchParams(window.location.search);
+const roleParam = urlParams.get('role');
+
+// ICE servers fetched from backend (keeps TURN credentials server-side)
+let ICE_SERVERS = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' }
+]};
+
+let socket = null;
+let localStream = null;
+let screenStream = null;
+let peerConnections = {};
+let broadcasterPc = null;
+let broadcasterSid = null;
+let micEnabled = true;
+let camEnabled = true;
+let screenSharing = false;
+let isBroadcaster = false;
+
+// ── Init ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  // Fetch ICE servers (STUN + TURN) securely from backend
+  try {
+    const iceRes = await fetch('/live/ice-servers');
+    const iceData = await iceRes.json();
+    if (iceData.iceServers) ICE_SERVERS = { iceServers: iceData.iceServers };
+  } catch(e) { /* keep default STUN */ }
+
+  // Determine role: URL param OR verify event ownership via API
+  await determineRole();
+
+  await loadEventInfo();
+  initSocket();
+  if (isBroadcaster) showBroadcasterUI();
+  else showViewerUI();
+});
+
+async function determineRole() {
+  // Explicit URL param takes priority (organizer uses ?role=broadcaster)
+  if (roleParam === 'broadcaster') { isBroadcaster = true; return; }
+  if (roleParam === 'viewer')      { isBroadcaster = false; return; }
+
+  // Auto-detect: check if this user is the event organizer
+  if (!token) { isBroadcaster = false; return; }
+  try {
+    const res = await fetch(`/events/${EVENT_ID}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const ev = data.event || {};
+    isBroadcaster = (ev.created_by === user.id) || (user.role === 'admin');
+  } catch(e) { isBroadcaster = false; }
+}
+
+async function loadEventInfo() {
+  try {
+    const res = await fetch(`/events/${EVENT_ID}`);
+    const data = await res.json();
+    const ev = data.event || {};
+    document.getElementById('liveEventTitle').textContent = ev.title || 'Live Event';
+    document.getElementById('liveSubtitle').textContent = ev.venue || 'SkillConnect Live';
+    if (ev.is_live) document.getElementById('liveBadge').classList.remove('d-none');
+  } catch(e) {}
+}
+
+// ── Socket.IO ────────────────────────────────────────────────────────────
+function initSocket() {
+  socket = io({ transports: ['websocket', 'polling'] });
+
+  socket.on('connect', () => {
+    if (!isBroadcaster) {
+      socket.emit('viewer-join', { event_id: EVENT_ID });
+    }
+  });
+
+  // ── Events for VIEWERS ────────────────────────────────────────
+  socket.on('waiting-for-broadcaster', () => {
+    document.getElementById('waitingBadge').classList.remove('d-none');
+    document.getElementById('waitingMsg').textContent = 'Waiting for organizer to go live…';
+  });
+
+  socket.on('broadcaster-joined', async ({ broadcaster_id }) => {
+    if (isBroadcaster) return;
+    broadcasterSid = broadcaster_id;
+    document.getElementById('waitingScreen').classList.add('d-none');
+    document.getElementById('videoWrapper').classList.remove('d-none');
+    document.getElementById('viewerBar').classList.remove('d-none');
+    document.getElementById('liveBadge').classList.remove('d-none');
+    document.getElementById('waitingBadge').classList.add('d-none');
+    await createViewerPeerConnection(broadcaster_id);
+  });
+
+  socket.on('broadcaster-disconnected', () => {
+    document.getElementById('videoWrapper').classList.add('d-none');
+    document.getElementById('waitingScreen').classList.remove('d-none');
+    document.getElementById('liveBadge').classList.add('d-none');
+    document.getElementById('viewerBar').classList.add('d-none');
+    document.getElementById('waitingMsg').textContent = 'Stream ended by organizer';
+    if (broadcasterPc) { broadcasterPc.close(); broadcasterPc = null; }
+    addSystemMsg('🔴 Stream ended.');
+  });
+
+  socket.on('offer', async ({ sdp, sender }) => {
+    // Viewer receives an offer from broadcaster
+    if (isBroadcaster) return;
+    if (!broadcasterPc) await createViewerPeerConnection(sender);
+    await broadcasterPc.setRemoteDescription(new RTCSessionDescription(sdp));
+    const answer = await broadcasterPc.createAnswer();
+    await broadcasterPc.setLocalDescription(answer);
+    socket.emit('answer', { target: sender, sdp: broadcasterPc.localDescription });
+  });
+
+  socket.on('answer', async ({ sdp, sender }) => {
+    // Broadcaster receives answer from a viewer
+    const pc = peerConnections[sender];
+    if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+  });
+
+  socket.on('ice-candidate', async ({ candidate, sender }) => {
+    if (isBroadcaster) {
+      const pc = peerConnections[sender];
+      if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    } else {
+      if (broadcasterPc && candidate) await broadcasterPc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  });
+
+  // ── Events for BROADCASTER ─────────────────────────────────────
+  socket.on('viewer-joined', async ({ viewer_id }) => {
+    if (!isBroadcaster || !localStream) return;
+    addSystemMsg(`👤 A viewer joined`);
+    updateViewerCount(Object.keys(peerConnections).length + 1);
+    await createBroadcasterPeerConnection(viewer_id);
+  });
+
+  socket.on('viewer-disconnected', ({ viewer_id }) => {
+    if (peerConnections[viewer_id]) {
+      peerConnections[viewer_id].close();
+      delete peerConnections[viewer_id];
+    }
+    updateViewerCount(Object.keys(peerConnections).length);
+  });
+
+  socket.on('viewer-raise-hand', ({ name }) => {
+    addSystemMsg(`✋ ${name} raised their hand`);
+  });
+
+  // ── Shared ──────────────────────────────────────────────────────
+  socket.on('viewer-count', ({ count }) => {
+    document.getElementById('viewerCount').textContent = count;
+  });
+
+  socket.on('live-chat', ({ name, message, ts }) => {
+    appendChatMsg(name, message, name === MY_NAME);
+  });
+}
+
+// ── Broadcaster: start capturing & announce ──────────────────────────────
+async function startBroadcast() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    // Show local preview in PiP
+    document.getElementById('localVideo').srcObject = localStream;
+    document.getElementById('pipLocal').classList.remove('d-none');
+    document.getElementById('videoWrapper').classList.remove('d-none');
+    document.getElementById('waitingScreen').classList.add('d-none');
+    document.getElementById('broadcasterBar').classList.remove('d-none');
+    document.getElementById('startLiveBtn').classList.add('d-none');
+    document.getElementById('stopLiveBtn').classList.remove('d-none');
+    document.getElementById('liveBadge').classList.remove('d-none');
+    document.getElementById('waitingBadge').classList.add('d-none');
+
+    // Tell server we're broadcasting
+    socket.emit('broadcaster-ready', { event_id: EVENT_ID });
+    await fetch(`/live/${EVENT_ID}/start`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    addSystemMsg('🔴 You are now live!');
+  } catch (err) {
+    alert('Could not access camera/microphone: ' + err.message);
+  }
+}
+
+async function stopBroadcast() {
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
+  Object.values(peerConnections).forEach(pc => pc.close());
+  peerConnections = {};
+  document.getElementById('videoWrapper').classList.add('d-none');
+  document.getElementById('waitingScreen').classList.remove('d-none');
+  document.getElementById('broadcasterBar').classList.add('d-none');
+  document.getElementById('liveBadge').classList.add('d-none');
+  document.getElementById('startLiveBtn').classList.remove('d-none');
+  document.getElementById('stopLiveBtn').classList.add('d-none');
+  await fetch(`/live/${EVENT_ID}/stop`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+  });
+  addSystemMsg('Stream ended.');
+}
+
+// ── Broadcaster: create a peer connection for a new viewer ───────────────
+async function createBroadcasterPeerConnection(viewerId) {
+  const pc = new RTCPeerConnection(ICE_SERVERS);
+  peerConnections[viewerId] = pc;
+
+  // Add all local tracks
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) socket.emit('ice-candidate', { target: viewerId, candidate });
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      pc.close();
+      delete peerConnections[viewerId];
+    }
+  };
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit('offer', { target: viewerId, sdp: pc.localDescription });
+}
+
+// ── Viewer: create a peer connection to the broadcaster ─────────────────
+async function createViewerPeerConnection(broadcasterId) {
+  const pc = new RTCPeerConnection(ICE_SERVERS);
+  broadcasterPc = pc;
+
+  pc.ontrack = ({ streams }) => {
+    const rv = document.getElementById('remoteVideo');
+    if (streams[0]) rv.srcObject = streams[0];
+  };
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) socket.emit('ice-candidate', { target: broadcasterId, candidate });
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') {
+      addSystemMsg('⚠️ Connection issue. Reconnecting…');
+    }
+  };
+}
+
+// ── Media controls (broadcaster) ─────────────────────────────────────────
+function toggleMic() {
+  if (!localStream) return;
+  micEnabled = !micEnabled;
+  localStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
+  const btn = document.getElementById('micBtn');
+  btn.innerHTML = `<i class="bi bi-mic${micEnabled ? '-fill' : '-mute-fill'}"></i>`;
+  btn.className = micEnabled ? 'ctrl-btn ctrl-btn-default' : 'ctrl-btn ctrl-btn-muted';
+}
+
+function toggleCam() {
+  if (!localStream) return;
+  camEnabled = !camEnabled;
+  localStream.getVideoTracks().forEach(t => t.enabled = camEnabled);
+  const btn = document.getElementById('camBtn');
+  btn.innerHTML = `<i class="bi bi-camera-video${camEnabled ? '-fill' : '-off-fill'}"></i>`;
+  btn.className = camEnabled ? 'ctrl-btn ctrl-btn-default' : 'ctrl-btn ctrl-btn-muted';
+}
+
+async function toggleScreen() {
+  if (screenSharing) {
+    // Stop screen share, revert to camera
+    screenStream.getTracks().forEach(t => t.stop());
+    screenStream = null;
+    screenSharing = false;
+    const videoTrack = localStream.getVideoTracks()[0];
+    Object.values(peerConnections).forEach(pc => {
+      const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (sender && videoTrack) sender.replaceTrack(videoTrack);
+    });
+    document.getElementById('screenBtn').className = 'ctrl-btn ctrl-btn-default';
+  } else {
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      screenSharing = true;
+      const screenTrack = screenStream.getVideoTracks()[0];
+      Object.values(peerConnections).forEach(pc => {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) sender.replaceTrack(screenTrack);
+      });
+      document.getElementById('screenBtn').className = 'ctrl-btn ctrl-btn-muted';
+      screenTrack.onended = () => toggleScreen(); // auto-revert when user stops sharing
+    } catch(e) {}
+  }
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg || !socket) return;
+  socket.emit('live-chat', { event_id: EVENT_ID, name: MY_NAME, message: msg, ts: new Date().toISOString() });
+  input.value = '';
+}
+
+function appendChatMsg(name, text, isSelf) {
+  const el = document.createElement('div');
+  el.className = `chat-msg${isBroadcaster && !isSelf ? ' organizer' : ''}`;
+  el.innerHTML = `<div class="name">${escapeHtml(name)}</div><div class="text">${escapeHtml(text)}</div>`;
+  const box = document.getElementById('chatMessages');
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function addSystemMsg(text) {
+  const el = document.createElement('div');
+  el.style = 'text-align:center;font-size:0.75rem;color:#475569;padding:0.25rem 0';
+  el.textContent = text;
+  const box = document.getElementById('chatMessages');
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+function raiseHand() {
+  if (!socket) return;
+  socket.emit('viewer-raise-hand', { event_id: EVENT_ID, name: MY_NAME });
+  showToast('✋ Hand raised!', 'info');
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────
+function showBroadcasterUI() {
+  document.getElementById('broadcasterControls').classList.remove('d-none');
+}
+function showViewerUI() {
+  document.getElementById('waitingBadge').classList.remove('d-none');
+}
+function updateViewerCount(n) {
+  document.getElementById('viewerCount').textContent = n;
+}
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.stab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  btn.classList.add('active');
+}
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}
