@@ -1,371 +1,199 @@
-# SkillConnect 🎓
+# SkillConnect — Event Networking Platform
 
-A Flask-based Skill Development & Event Management Platform where users can enroll in courses, register for workshops, book events, and make secure payments through Razorpay. Conductors can create and manage learning content, while administrators oversee the entire platform.
+> **Connect, learn, and grow at professional events.**
 
----
-
-## 🚀 Features
-
-### 👤 User
-
-* Register and Login
-* Browse Courses
-* Purchase Courses
-* View Events & Workshops
-* Register for Events
-* Submit Feedback
-* View Announcements
-* Payment History
-
-### 🎤 Event Conductor
-
-* Create Courses
-* Create Workshops & Events
-* Manage Learning Content
-* Post Announcements
-* View Registrations
-
-### 🛡️ Admin
-
-* Manage Users
-* Manage Courses
-* Manage Events
-* Monitor Payments
-* Platform Administration
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-skillconnect--12m0.onrender.com-brightgreen?style=for-the-badge)](https://skillconnect-12m0.onrender.com/)
+[![GitHub](https://img.shields.io/badge/GitHub-sushma265%2FSkillConnect-blue?style=for-the-badge&logo=github)](https://github.com/sushma265/SkillConnect)
 
 ---
 
-## 🏗️ Tech Stack
+## 🚀 Overview
 
-* Flask
-* Flask-SQLAlchemy
-* Flask-JWT-Extended
-* SQLite
-* Razorpay Payment Gateway
-* Python Dotenv
-* Docker
-* Docker Compose
+**SkillConnect** is a full-stack event networking platform that enables professionals to discover, register for, and actively participate in events, workshops, and live sessions. It bridges the gap between event organizers and attendees through real-time tools, seamless check-in, and rich analytics.
+
+Whether you're an organizer managing logistics or an attendee looking to grow your network, SkillConnect has you covered.
 
 ---
 
-## 📂 Project Structure
+## 🌐 Live Demo
 
-```text
-skillconnect/
-│
-├── app/
-│   ├── routes/
-│   │   ├── auth.py
-│   │   ├── courses.py
-│   │   ├── events.py
-│   │   ├── payments.py
-│   │   ├── feedback.py
-│   │   ├── announcements.py
-│   │   └── admin.py
-│   │
-│   ├── models.py
-│   ├── utils.py
-│   └── __init__.py
-│
-├── instance/
-│   └── skillconnect.db
-│
-├── Dockerfile
-├── docker-compose.yml
-├── run.py
-├── seed.py
-├── requirements.txt
-├── .env
-└── README.md
+| Link | Description |
+|------|-------------|
+| 🏠 [Home](https://skillconnect-12m0.onrender.com/) | Landing page — featured events & announcements |
+| 📅 [Browse Events](https://skillconnect-12m0.onrender.com/browse-events) | All events & workshops |
+| 🎤 [Browse Sessions](https://skillconnect-12m0.onrender.com/browse-sessions) | Keynotes, panels, and workshops |
+| 📊 [Analytics](https://skillconnect-12m0.onrender.com/analytics-view) | Organizer dashboard |
+| 🔐 [Login](https://skillconnect-12m0.onrender.com/login) | Sign in to your account |
+| ✍️ [Register](https://skillconnect-12m0.onrender.com/register) | Create a free account |
+| 🛠️ [Admin Panel](https://skillconnect-12m0.onrender.com/admin-panel) | Platform administration |
+| 📋 [Dashboard](https://skillconnect-12m0.onrender.com/dashboard) | Personal user dashboard |
+
+---
+
+## ✨ Features
+
+### For Attendees
+- 🔍 Browse and filter events, workshops, and sessions
+- 📝 Register and manage event attendance
+- 🤝 Network with fellow attendees and exchange contacts
+- 💬 Participate in live Q&A and polls during sessions
+- 👤 Build a professional profile
+
+### For Organizers
+- ➕ Create and publish events with scheduling details
+- 📲 QR code check-in for seamless attendee management
+- 📊 Analytics dashboard — track attendance, engagement & performance
+- 📢 Post announcements and updates
+
+### Platform
+- ⚡ Live sessions — keynotes, panels, workshops
+- 🗳️ Interactive live polls and real-time feedback
+- 📣 Announcements feed on the homepage
+- 🛡️ Admin panel for platform governance
+- 100% Free to use
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | HTML5, CSS3, Vanilla JavaScript |
+| **Backend** | Python Flask |
+| **Database** | MongoDB (PyMongo / Flask-PyMongo) |
+| **Authentication** | Flask-Login (Session-based) |
+| **Deployment** | Render.com |
+| **Version Control** | Git & GitHub |
+
+---
+
+## 📁 Project Structure
+
+```
+SkillConnect/
+├── static/              # Static assets
+│   ├── css/             # Stylesheets
+│   └── js/              # JavaScript files
+├── templates/           # Jinja2 HTML templates
+│   ├── index.html       # Landing page
+│   ├── browse_events.html
+│   ├── browse_sessions.html
+│   ├── dashboard.html
+│   ├── analytics.html
+│   ├── admin_panel.html
+│   ├── login.html
+│   └── register.html
+├── app.py               # Flask app entry point
+├── routes/              # Flask Blueprints
+├── models/              # MongoDB collection helpers
+├── config.py            # App configuration
+├── requirements.txt     # Python dependencies
+├── .env.example         # Environment variables template
+└── README.md            # This file
 ```
 
 ---
 
-## ⚙️ Installation
+## ⚙️ Getting Started
 
-### Clone Repository
+### Prerequisites
+
+- Node.js (v16+)
+- npm or yarn
+- MongoDB or PostgreSQL instance
+
+### Installation
 
 ```bash
-git clone https://github.com/your-username/skillconnect.git
-cd skillconnect
-```
+# 1. Clone the repository
+git clone https://github.com/sushma265/SkillConnect.git
+cd SkillConnect
 
-### Create Virtual Environment
-
-```bash
+# 2. Create and activate a virtual environment
 python -m venv venv
-```
+source venv/bin/activate   # Windows: venv\Scripts\activate
 
-### Activate Virtual Environment
-
-#### Windows
-
-```bash
-venv\Scripts\activate
-```
-
-#### Linux / Mac
-
-```bash
-source venv/bin/activate
-```
-
-### Install Dependencies
-
-```bash
+# 3. Install Python dependencies
 pip install -r requirements.txt
+
+# 4. Set up environment variables
+cp .env.example .env
+# Edit .env with your MongoDB URI, secret key, etc.
+
+# 5. Start the Flask development server
+flask run
 ```
 
----
+The app will be running at `http://localhost:5000`.
 
-## 🔑 Environment Variables
-
-Create a `.env` file:
+### Environment Variables
 
 ```env
+FLASK_APP=app.py
+FLASK_ENV=development
 SECRET_KEY=your_secret_key
-
-JWT_SECRET_KEY=your_jwt_secret
-
-RAZORPAY_KEY_ID=your_razorpay_key
-
-RAZORPAY_KEY_SECRET=your_razorpay_secret
+MONGO_URI=mongodb://localhost:27017/skillconnect
 ```
 
 ---
 
-## 🗄️ Initialize Database
+## 📸 Screenshots
+
+| Page | Preview |
+|------|---------|
+| 🏠 Home | Featured events, announcements, platform stats |
+| 📅 Events | Filterable grid of events & workshops |
+| 🎤 Sessions | Keynotes, panels, and workshops by category |
+| 📊 Analytics | Organizer metrics and engagement charts |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
 
 ```bash
-python seed.py
+# 1. Fork the repository
+# 2. Create your feature branch
+git checkout -b feature/your-feature-name
+
+# 3. Commit your changes
+git commit -m "feat: add your feature description"
+
+# 4. Push to the branch
+git push origin feature/your-feature-name
+
+# 5. Open a Pull Request
 ```
+
+Please ensure your code follows the existing code style and includes appropriate documentation.
 
 ---
 
-## ▶️ Run Application
+## 🗺️ Roadmap
 
-```bash
-python run.py
-```
-
-Server starts at:
-
-```text
-http://127.0.0.1:5000
-```
-
----
-
-# 🐳 Docker Development
-
-Run the application without installing Python dependencies locally.
-
-## Dockerfile
-
-Create a file named `Dockerfile`
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 5000
-
-CMD ["python", "run.py"]
-```
-
-## docker-compose.yml
-
-Create a file named `docker-compose.yml`
-
-```yaml
-version: "3.9"
-
-services:
-  skillconnect:
-    build: .
-    container_name: skillconnect_app
-
-    ports:
-      - "5000:5000"
-
-    env_file:
-      - .env
-
-    volumes:
-      - .:/app
-      - ./instance:/app/instance
-
-    restart: unless-stopped
-```
+- [ ] 🐳 Docker & docker-compose for containerized deployment
+- [ ] Mobile app (React Native / Flutter)
+- [ ] AI-powered attendee matchmaking
+- [ ] Video conferencing integration for virtual events
+- [ ] Multi-language support (i18n)
+- [ ] Stripe / Razorpay payment gateway for paid events
+- [ ] Push notifications and email reminders
+- [ ] Public API for third-party integrations
+- [ ] Gamification — badges, leaderboards, and achievements
 
 ---
 
-## Build Docker Image
+## 📄 License
 
-```bash
-docker build -t skillconnect .
-```
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## Run Docker Container
+## 👩‍💻 Author
 
-```bash
-docker run -p 5000:5000 --env-file .env skillconnect
-```
+**Sushma** — [@sushma265](https://github.com/sushma265)
 
 ---
 
-## Run Using Docker Compose
-
-```bash
-docker-compose up --build
-```
-
----
-
-## Run in Background
-
-```bash
-docker-compose up -d
-```
-
----
-
-## Stop Containers
-
-```bash
-docker-compose down
-```
-
----
-
-## View Logs
-
-```bash
-docker-compose logs -f
-```
-
----
-
-## Access Application
-
-```text
-http://localhost:5000
-```
-
----
-
-## 📡 Main API Routes
-
-### Authentication
-
-```http
-POST /auth/signup
-POST /auth/login
-GET  /auth/me
-```
-
-### Courses
-
-```http
-GET    /courses
-POST   /courses
-GET    /courses/<id>
-PUT    /courses/<id>
-DELETE /courses/<id>
-```
-
-### Events
-
-```http
-GET    /events
-POST   /events
-GET    /events/<id>
-PUT    /events/<id>
-DELETE /events/<id>
-POST   /events/<id>/register
-```
-
-### Payments
-
-```http
-POST /payments/create-order
-POST /payments/verify
-GET  /payments/history
-```
-
-### Feedback
-
-```http
-POST /feedback
-GET  /feedback
-```
-
-### Announcements
-
-```http
-POST /announcements
-GET  /announcements
-```
-
----
-
-## 💳 Razorpay Payment Flow
-
-```text
-User selects Course/Event
-          ↓
-Create Razorpay Order
-          ↓
-Complete Payment
-          ↓
-Verify Payment
-          ↓
-Access Granted
-```
-
----
-
-## 🔐 Authentication
-
-Protected routes require JWT Token:
-
-```http
-Authorization: Bearer <access_token>
-```
-
----
-
-## 🎯 Future Enhancements
-
-* QR Event Check-in
-* Certificate Generation
-* Email Notifications
-* Real-Time Chat
-* Event Analytics Dashboard
-* AI Course Recommendations
-* Docker Deployment on Cloud
-* Kubernetes Support
-* CI/CD Pipeline using GitHub Actions
-
----
-
-## 👨‍💻 Developed For
-
-**College Mini Project / Major Project**
-
-**Domain:** EdTech + Event Management + Online Payments
-
----
-
-## 📜 License
-
-This project is developed for educational and learning purposes.
+<p align="center">Made with ❤️ · <a href="https://skillconnect-12m0.onrender.com/">Try SkillConnect Live</a></p>
